@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'package:html/parser.dart';
 
 import '../shared/markdown.dart';
@@ -28,7 +30,7 @@ bool isCommonApiSymbol(String symbol) {
   return false;
 }
 
-String _compactText(String text, {int maxLength = -1}) {
+String _compactText(String? text, {int maxLength = -1}) {
   if (text == null) return '';
   String t = text.replaceAll(_multiWhitespaceRegExp, ' ').trim();
   if (maxLength > 0 && t.length > maxLength) {
@@ -39,9 +41,9 @@ String _compactText(String text, {int maxLength = -1}) {
 
 String compactDescription(String text) => _compactText(text, maxLength: 500);
 
-String compactReadme(String text) {
+String compactReadme(String? text) {
   if (text == null || text.isEmpty) return '';
-  final html = markdownToHtml(text)
+  final html = markdownToHtml(text)!
       .replaceAll('</li>', '\n</li>')
       .replaceAll('</p>', '\n</p>')
       .replaceAll('</ul>', '\n</ul>')
@@ -51,10 +53,10 @@ String compactReadme(String text) {
       .replaceAll('</pre>', '\n</pre>')
       .replaceAll('</blockquote>', '\n</blockquote>');
   final root = parseFragment(html);
-  return _compactText(root.text, maxLength: 5000);
+  return _compactText(root.text!, maxLength: 5000);
 }
 
-String normalizeBeforeIndexing(String text) {
+String normalizeBeforeIndexing(String? text) {
   if (text == null) return '';
   final String t = text
       .toLowerCase()
@@ -64,12 +66,12 @@ String normalizeBeforeIndexing(String text) {
   return t;
 }
 
-Iterable<String> splitForIndexing(String text) {
+Iterable<String> splitForIndexing(String? text) {
   if (text == null || text.isEmpty) return Iterable.empty();
   return text.split(_separators).where((s) => s.isNotEmpty);
 }
 
-List<String> splitForQuery(String text) {
+List<String> splitForQuery(String? text) {
   final words = splitForIndexing(text).toSet().toList();
 
   // lookup longer words first, as it may restrict the result set better
@@ -84,11 +86,11 @@ List<String> splitForQuery(String text) {
 }
 
 List<String> extractExactPhrases(String text) =>
-    _exactTermRegExp.allMatches(text).map((m) => m.group(1)).toList();
+    _exactTermRegExp.allMatches(text).map((m) => m.group(1)!).toList();
 
 const int _maxWordLength = 80;
 
-Map<String, double> tokenize(String originalText) {
+Map<String, double>? tokenize(String? originalText) {
   if (originalText == null || originalText.isEmpty) return null;
   final tokens = <String, double>{};
 
@@ -97,7 +99,7 @@ Map<String, double> tokenize(String originalText) {
       continue;
     }
 
-    final String normalizedWord = normalizeBeforeIndexing(word);
+    final normalizedWord = normalizeBeforeIndexing(word);
     if (normalizedWord.isEmpty) continue;
 
     tokens[normalizedWord] = 1.0;

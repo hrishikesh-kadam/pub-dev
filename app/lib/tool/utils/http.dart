@@ -32,7 +32,7 @@ http.Client httpRetryClient({
 /// Returns an [http.Client] which sends a `Bearer` token as `Authorization`
 /// header for each request.
 http.Client httpClientWithAuthorization({
-  required Future<String> Function() tokenProvider,
+  required Future<String?> Function() tokenProvider,
   http.Client? client,
 }) {
   return _AuthenticatedClient(

@@ -13,7 +13,7 @@ import 'monitoring.dart';
 
 final _logger = Logger('cached_value');
 
-typedef UpdateFn<T> = Future<T> Function();
+typedef UpdateFn<T> = Future<T?> Function();
 
 /// Wraps a locally cached value that is periodically updated, and can be accessed synchronously.
 ///

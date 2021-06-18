@@ -2,10 +2,13 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:async';
 
 import 'package:logging/logging.dart';
 
+// ignore: import_of_legacy_library_into_null_safe
 import '../package/models.dart';
 import '../shared/datastore.dart';
 
@@ -20,7 +23,7 @@ class TransitiveDependencyGraph {
   void _logStats() {
     final stats = <String, dynamic>{
       'keys': _deps.length,
-      'values': _deps.values.fold(0, (a, b) => a + b.length),
+      'values': _deps.values.fold<int>(0, (a, b) => a + b.length),
       'interned': _internedKeys.length,
     };
     _logger.info('TransitiveDependencyGraph stats: $stats');
@@ -47,16 +50,16 @@ class TransitiveDependencyGraph {
   String _intern(String s) => _internedKeys.putIfAbsent(s, () => s);
 
   void _fixpointNode(String node) {
-    final Set<String> directs = _deps[node];
+    final directs = _deps[node]!;
     final temp = <Set<String>>[];
     for (;;) {
       final int before = directs.length;
       temp.clear();
       for (final String direct in directs) {
         if (node != direct) {
-          final Set<String> transitives = _deps[direct];
+          final transitives = _deps[direct];
           if (transitives?.isNotEmpty == true) {
-            temp.add(transitives);
+            temp.add(transitives!);
           }
         }
       }
@@ -84,7 +87,7 @@ class PackageDependencyBuilder {
 
   final _reverseDeps = TransitiveDependencyGraph();
 
-  DateTime _lastTs;
+  DateTime? _lastTs;
 
   /// The future will complete once the initial database has been scanned and a
   /// graph has been built.
@@ -138,7 +141,7 @@ class PackageDependencyBuilder {
           _logger.info(
               'Found ${affected.length} dependent packages for ${pv.package}.');
 
-          if (affected != null && affected.isNotEmpty) {
+          if (affected.isNotEmpty) {
             try {
               await _onAffected(pv.package, pv.version, affected);
             } catch (e, st) {

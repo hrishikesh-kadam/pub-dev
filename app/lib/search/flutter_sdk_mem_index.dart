@@ -2,14 +2,18 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'package:gcloud/service_scope.dart' as ss;
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:retry/retry.dart';
 
 import '../shared/cached_value.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import 'models.dart';
 import 'sdk_mem_index.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import 'search_service.dart';
 
 /// The index.json file contains overlap with the Dart SDK and also repeats
@@ -65,13 +69,13 @@ class FlutterSdkMemIndex {
     await _index.close();
   }
 
-  Future<List<SdkLibraryHit>> search(String query, {int limit}) async {
+  Future<List<SdkLibraryHit>> search(String query, {int? limit}) async {
     if (!_index.isAvailable) return <SdkLibraryHit>[];
-    return await _index.value.search(query, limit: limit);
+    return await _index.value!.search(query, limit: limit);
   }
 }
 
-Future<SdkMemIndex> _createFlutterSdkMemIndex() async {
+Future<SdkMemIndex?> _createFlutterSdkMemIndex() async {
   try {
     return await retry(
       () async {

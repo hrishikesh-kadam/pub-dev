@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:async';
 
 import 'package:logging/logging.dart';
@@ -10,6 +12,7 @@ import 'package:meta/meta.dart';
 import 'package:pub_package_reader/pub_package_reader.dart';
 
 import '../shared/datastore.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import 'models.dart';
 
 final _logger = Logger('pub.name_tracker');
@@ -36,7 +39,7 @@ class NameTracker {
   final Set<String> _reservedNames = <String>{};
   final Set<String> _reducedNames = <String>{};
   final _firstScanCompleter = Completer();
-  _NameTrackerUpdater _updater;
+  _NameTrackerUpdater? _updater;
 
   NameTracker(this._db);
 
@@ -114,7 +117,7 @@ class NameTracker {
       throw StateError('Already tracking datastore.');
     }
     _updater = _NameTrackerUpdater(_db);
-    _updater.startNameTrackerUpdates();
+    _updater!.startNameTrackerUpdates();
   }
 
   /// Stops tracking the datastore.
@@ -127,9 +130,9 @@ class NameTracker {
 /// Updates [nameTracker] by polling the Datastore periodically.
 class _NameTrackerUpdater {
   final DatastoreDB _db;
-  DateTime _lastTs;
-  Completer _sleepCompleter;
-  Timer _sleepTimer;
+  DateTime? _lastTs;
+  Completer? _sleepCompleter;
+  Timer? _sleepTimer;
   bool _stopped = false;
 
   _NameTrackerUpdater(this._db);
@@ -171,12 +174,12 @@ class _NameTrackerUpdater {
     if (_stopped) return;
     _sleepCompleter = Completer();
     _sleepTimer = Timer(_pollingInterval, () {
-      if (_sleepCompleter != null && !_sleepCompleter.isCompleted) {
-        _sleepCompleter.complete();
+      if (_sleepCompleter != null && !_sleepCompleter!.isCompleted) {
+        _sleepCompleter!.complete();
       }
     });
-    await _sleepCompleter.future;
-    _sleepTimer.cancel();
+    await _sleepCompleter!.future;
+    _sleepTimer?.cancel();
     _sleepCompleter = null;
     _sleepTimer = null;
   }
@@ -207,8 +210,8 @@ class _NameTrackerUpdater {
 
   void stop() {
     _stopped = true;
-    if (_sleepCompleter != null && !_sleepCompleter.isCompleted) {
-      _sleepCompleter.complete();
+    if (_sleepCompleter != null && !_sleepCompleter!.isCompleted) {
+      _sleepCompleter!.complete();
     }
     _sleepTimer?.cancel();
   }

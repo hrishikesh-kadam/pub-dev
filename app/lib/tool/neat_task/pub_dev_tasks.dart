@@ -2,20 +2,30 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'package:gcloud/service_scope.dart' as ss;
-import 'package:meta/meta.dart';
 import 'package:neat_periodic_task/neat_periodic_task.dart';
 
+// ignore: import_of_legacy_library_into_null_safe
 import '../../account/backend.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../../account/consent_backend.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../../audit/backend.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../../dartdoc/backend.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../../job/backend.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../../package/backend.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../../scorecard/backend.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../../search/backend.dart';
 import '../../shared/datastore.dart';
 
+// ignore: import_of_legacy_library_into_null_safe
 import 'datastore_status_provider.dart';
 
 /// Setup the tasks that we are running in pub.dev frontend.
@@ -127,9 +137,9 @@ void _setupJobCleanupPeriodicTasks() {
 }
 
 void _daily({
-  @required String name,
-  @required bool isRuntimeVersioned,
-  @required NeatPeriodicTask task,
+  required String name,
+  required bool isRuntimeVersioned,
+  required NeatPeriodicTask task,
 }) {
   final scheduler = NeatPeriodicTaskScheduler(
     name: name,
@@ -145,9 +155,9 @@ void _daily({
 }
 
 void _weekly({
-  @required String name,
-  @required bool isRuntimeVersioned,
-  @required NeatPeriodicTask task,
+  required String name,
+  required bool isRuntimeVersioned,
+  required NeatPeriodicTask task,
 }) {
   final scheduler = NeatPeriodicTaskScheduler(
     name: name,

@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -9,12 +11,16 @@ import 'package:gcloud/service_scope.dart' as ss;
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 
+// ignore: import_of_legacy_library_into_null_safe
 import '../scorecard/backend.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../shared/configuration.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../shared/redis_cache.dart' show cache;
 import '../shared/utils.dart';
 import '../tool/utils/http.dart';
 
+// ignore: import_of_legacy_library_into_null_safe
 import 'search_service.dart';
 
 final _logger = Logger('pub.search.client');
@@ -32,7 +38,7 @@ class SearchClient {
   /// The HTTP client used for making calls to our search service.
   final http.Client _httpClient;
 
-  SearchClient([http.Client client])
+  SearchClient([http.Client? client])
       : _httpClient = client ?? httpRetryClient(retries: 3);
 
   /// Calls the search service (or uses cache) to serve the [query].
@@ -42,8 +48,8 @@ class SearchClient {
   /// search service and update the cached value.
   Future<PackageSearchResult> search(
     ServiceSearchQuery query, {
-    Duration ttl,
-    Duration updateCacheAfter,
+    Duration? ttl,
+    Duration? updateCacheAfter,
     bool skipCache = false,
   }) async {
     // check validity first
@@ -58,7 +64,7 @@ class SearchClient {
     final serviceUrlParams = Uri(queryParameters: query.toUriQueryParameters());
     final String serviceUrl = '$httpHostPort/search$serviceUrlParams';
 
-    Future<PackageSearchResult> searchFn() async {
+    Future<PackageSearchResult?> searchFn() async {
       final response = await _httpClient
           .get(Uri.parse(serviceUrl), headers: cloudTraceHeaders())
           .timeout(Duration(seconds: 5));
@@ -78,16 +84,17 @@ class SearchClient {
       return result;
     }
 
-    PackageSearchResult result;
+    PackageSearchResult? result;
 
     if (skipCache) {
       result = await searchFn();
     } else {
       final cacheEntry = cache.packageSearchResult(serviceUrl, ttl: ttl);
-      result = await cacheEntry.get(searchFn);
+      result = await cacheEntry.get(searchFn) as PackageSearchResult?;
 
       if (updateCacheAfter != null &&
-          result?.timestamp != null &&
+          result != null &&
+          result.timestamp != null &&
           result.age > updateCacheAfter) {
         _logger.info('Updating stale cache entry.');
         final value = await searchFn();

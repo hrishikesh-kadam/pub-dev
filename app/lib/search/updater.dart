@@ -8,7 +8,6 @@ import 'dart:math';
 import 'package:gcloud/service_scope.dart' as ss;
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
-import 'package:pub_dev/search/search_service.dart';
 
 import '../package/models.dart' show Package;
 import '../shared/datastore.dart';
@@ -18,6 +17,7 @@ import '../shared/task_scheduler.dart';
 import '../shared/task_sources.dart';
 
 import 'backend.dart';
+import 'search_service.dart';
 
 final Logger _logger = Logger('pub.search.updater');
 

@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:async';
 
 import 'package:gcloud/service_scope.dart' as ss;
@@ -47,7 +49,7 @@ class AnnouncementBackend {
   /// Returns the current announcement in sanitized HTML (if it is loaded).
   ///
   /// May be `null` if there is nothing to display.
-  String getAnnouncementHtml() {
+  String? getAnnouncementHtml() {
     return _announcementHtml.isAvailable ? _announcementHtml.value : null;
   }
 }

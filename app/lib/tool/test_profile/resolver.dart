@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -16,6 +18,7 @@ import '../../shared/env_config.dart';
 import '../../shared/urls.dart' as urls;
 import '../../shared/utils.dart';
 
+// ignore: import_of_legacy_library_into_null_safe
 import 'models.dart';
 
 /// Utility method to resolve package:version pairs that are:
@@ -90,7 +93,7 @@ Future<List<ResolvedVersion>> resolveVersions(
 String _generateDummyPubspec(
   String package,
   String version, {
-  String minSdkVersion,
+  String? minSdkVersion,
 }) {
   minSdkVersion ??= Platform.version.split(' ').first;
   return json.encode(

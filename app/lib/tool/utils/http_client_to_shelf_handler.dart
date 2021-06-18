@@ -2,13 +2,18 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'package:gcloud/service_scope.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart' as http_testing;
 import 'package:logging/logging.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import 'package:shelf/shelf.dart' as shelf;
 
+// ignore: import_of_legacy_library_into_null_safe
 import '../../frontend/handlers.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../../shared/handler_helpers.dart';
 import '../../tool/utils/http.dart';
 
@@ -17,8 +22,8 @@ import '../../tool/utils/http.dart';
 ///
 /// If [handler] is not specified, it will use the default frontend handler.
 http.Client httpClientToShelfHandler({
-  shelf.Handler handler,
-  String authToken,
+  shelf.Handler? handler,
+  String? authToken,
 }) {
   handler ??= createAppHandler();
   handler = wrapHandler(
@@ -49,7 +54,7 @@ http_testing.MockClientHandler _wrapShelfHandler(shelf.Handler handler) {
       url: Uri(path: _removeLeadingSlashes(rq.url.path), query: rq.url.query),
       handlerPath: '',
     );
-    shelf.Response rs;
+    late shelf.Response rs;
     // Need to fork a service scope to create a separate RequestContext in the
     // search service handler.
     await fork(() async {

@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:async';
 import 'dart:collection';
 import 'dart:math' as math;
@@ -12,6 +14,7 @@ import 'package:logging/logging.dart';
 import '../shared/utils.dart' show boundedList;
 
 import 'scope_specificity.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import 'search_service.dart';
 import 'text_utils.dart';
 import 'token_index.dart';
@@ -29,11 +32,11 @@ class InMemoryPackageIndex implements PackageIndex {
   final _likeTracker = _LikeTracker();
   final _updatedPackages = ListQueue<String>();
   final bool _alwaysUpdateLikeScores;
-  DateTime _lastUpdated;
+  DateTime? _lastUpdated;
   bool _isReady = false;
 
   InMemoryPackageIndex({
-    math.Random random,
+    math.Random? random,
     @visibleForTesting bool alwaysUpdateLikeScores = false,
   }) : _alwaysUpdateLikeScores = alwaysUpdateLikeScores;
 
@@ -110,7 +113,7 @@ class InMemoryPackageIndex implements PackageIndex {
 
   @override
   Future<void> removePackage(String package) async {
-    final PackageDocument doc = _packages.remove(package);
+    final doc = _packages.remove(package);
     if (doc == null) return;
     _packageNameIndex.remove(package);
     _descrIndex.remove(package);
@@ -134,7 +137,7 @@ class InMemoryPackageIndex implements PackageIndex {
       final String prefix = query.parsedQuery.packagePrefix.toLowerCase();
       packages.removeWhere(
         (package) =>
-            !_packages[package].package.toLowerCase().startsWith(prefix),
+            !_packages[package]!.package.toLowerCase().startsWith(prefix),
       );
     }
 
@@ -143,19 +146,19 @@ class InMemoryPackageIndex implements PackageIndex {
         query.tagsPredicate.appendPredicate(query.parsedQuery.tagsPredicate);
     if (combinedTagsPredicate.isNotEmpty) {
       packages.retainWhere(
-          (package) => combinedTagsPredicate.matches(_packages[package].tags));
+          (package) => combinedTagsPredicate.matches(_packages[package]!.tags));
     }
 
     // filter on dependency
     if (query.parsedQuery.hasAnyDependency) {
       packages.removeWhere((package) {
-        final doc = _packages[package];
+        final doc = _packages[package]!;
         if (doc.dependencies == null) return true;
         for (String dependency in query.parsedQuery.allDependencies) {
           if (!doc.dependencies.containsKey(dependency)) return true;
         }
         for (String dependency in query.parsedQuery.refDependencies) {
-          final String type = doc.dependencies[dependency];
+          final type = doc.dependencies[dependency];
           if (type == null || type == DependencyTypes.transitive) return true;
         }
         return false;
@@ -167,7 +170,7 @@ class InMemoryPackageIndex implements PackageIndex {
       assert(query.uploaderOrPublishers.isNotEmpty);
 
       packages.removeWhere((package) {
-        final doc = _packages[package];
+        final doc = _packages[package]!;
         if (doc.publisherId != null) {
           return !query.uploaderOrPublishers.contains(doc.publisherId);
         }
@@ -182,7 +185,7 @@ class InMemoryPackageIndex implements PackageIndex {
     if (query.publisherId != null || query.parsedQuery.publisher != null) {
       final publisherId = query.publisherId ?? query.parsedQuery.publisher;
       packages.removeWhere((package) {
-        final doc = _packages[package];
+        final doc = _packages[package]!;
         return doc.publisherId != publisherId;
       });
     }
@@ -194,8 +197,8 @@ class InMemoryPackageIndex implements PackageIndex {
         if (doc?.uploaderEmails == null) {
           return true;
         }
-        for (String email in query.parsedQuery.emails) {
-          if (doc.uploaderEmails.contains(email)) {
+        for (final email in query.parsedQuery.emails) {
+          if (doc!.uploaderEmails.contains(email)) {
             return false;
           }
         }
@@ -203,7 +206,7 @@ class InMemoryPackageIndex implements PackageIndex {
       });
     }
 
-    PackageHit highlightedHit;
+    PackageHit? highlightedHit;
     if (query.considerHighlightedHit) {
       final queryText = query.parsedQuery.text;
       final matchingPackage =
@@ -229,7 +232,7 @@ class InMemoryPackageIndex implements PackageIndex {
       packages.removeWhere((x) => !keys.contains(x));
     }
 
-    List<PackageHit> packageHits;
+    late List<PackageHit> packageHits;
     switch (query.order ?? SearchOrder.top) {
       case SearchOrder.top:
         final hasSpecificScope = query.sdk != null;
@@ -267,14 +270,12 @@ class InMemoryPackageIndex implements PackageIndex {
     packageHits =
         boundedList(packageHits, offset: query.offset, limit: query.limit);
 
-    if (textResults != null &&
-        textResults.topApiPages != null &&
-        textResults.topApiPages.isNotEmpty) {
+    if (textResults != null && textResults.topApiPages.isNotEmpty) {
       packageHits = packageHits.map((ps) {
         final apiPages = textResults.topApiPages[ps.package]
             // TODO: extract title for the page
             ?.map((String page) => ApiPageRef(path: page))
-            ?.toList();
+            .toList();
         return ps.change(apiPages: apiPages);
       }).toList();
     }
@@ -291,7 +292,7 @@ class InMemoryPackageIndex implements PackageIndex {
       ServiceSearchQuery query, Iterable<String> packages) {
     final scopeSpecificity = <String, double>{};
     packages.forEach((String package) {
-      final PackageDocument doc = _packages[package];
+      final doc = _packages[package]!;
       scopeSpecificity[package] = scoreScopeSpecificity(query.sdk, doc.tags);
     });
     return scopeSpecificity;
@@ -301,7 +302,7 @@ class InMemoryPackageIndex implements PackageIndex {
   Map<String, double> getPopularityScore(Iterable<String> packages) {
     return Map.fromIterable(
       packages,
-      value: (package) => _packages[package].popularity ?? 0.0,
+      value: (package) => _packages[package]?.popularity ?? 0.0,
     );
   }
 
@@ -309,7 +310,7 @@ class InMemoryPackageIndex implements PackageIndex {
   Map<String, double> getLikeScore(Iterable<String> packages) {
     return Map.fromIterable(
       packages,
-      value: (package) => (_packages[package].likeCount?.toDouble() ?? 0.0),
+      value: (package) => (_packages[package]?.likeCount?.toDouble() ?? 0.0),
     );
   }
 
@@ -317,13 +318,14 @@ class InMemoryPackageIndex implements PackageIndex {
   Map<String, double> getPubPoints(Iterable<String> packages) {
     return Map.fromIterable(
       packages,
-      value: (package) => (_packages[package].grantedPoints?.toDouble() ?? 0.0),
+      value: (package) =>
+          (_packages[package]?.grantedPoints?.toDouble() ?? 0.0),
     );
   }
 
   Score _getOverallScore(Iterable<String> packages) {
     final values = Map<String, double>.fromIterable(packages, value: (package) {
-      final doc = _packages[package];
+      final doc = _packages[package]!;
       final downloadScore = doc.popularity ?? 0.0;
       final likeScore = _likeTracker.getLikeScore(doc.package);
       final popularity = (downloadScore + likeScore) / 2;
@@ -335,7 +337,7 @@ class InMemoryPackageIndex implements PackageIndex {
     return Score(values);
   }
 
-  _TextResults _searchText(Set<String> packages, String text) {
+  _TextResults? _searchText(Set<String> packages, String? text) {
     final sw = Stopwatch()..start();
     if (text != null && text.isNotEmpty) {
       final words = splitForQuery(text);
@@ -397,7 +399,7 @@ class InMemoryPackageIndex implements PackageIndex {
       if (!aborted && phrases.isNotEmpty) {
         final Map<String, double> matched = <String, double>{};
         for (String package in score.getKeys()) {
-          final doc = _packages[package];
+          final doc = _packages[package]!;
           final bool matchedAllPhrases = phrases.every((phrase) =>
               doc.package.contains(phrase) ||
               doc.description.contains(phrase) ||
@@ -434,7 +436,7 @@ class InMemoryPackageIndex implements PackageIndex {
       final int scoreCompare = -a.score.compareTo(b.score);
       if (scoreCompare != 0) return scoreCompare;
       // if two packages got the same score, order by last updated
-      return _compareUpdated(_packages[a.package], _packages[b.package]);
+      return _compareUpdated(_packages[a.package]!, _packages[b.package]!);
     });
     return list;
   }
@@ -442,9 +444,9 @@ class InMemoryPackageIndex implements PackageIndex {
   List<PackageHit> _rankWithComparator(Set<String> packages,
       int Function(PackageDocument a, PackageDocument b) compare) {
     final list = packages
-        .map((package) => PackageHit(package: _packages[package].package))
+        .map((package) => PackageHit(package: _packages[package]!.package))
         .toList();
-    list.sort((a, b) => compare(_packages[a.package], _packages[b.package]));
+    list.sort((a, b) => compare(_packages[a.package]!, _packages[b.package]!));
     return list;
   }
 
@@ -504,7 +506,7 @@ class _PackageNameIndex {
   }
 
   /// Search using the parsed [words] and return the match packages with scores.
-  Score searchWords(List<String> words, {Set<String> packages}) {
+  Score searchWords(List<String> words, {Set<String>? packages}) {
     final pkgNamesToCheck = packages ?? _namesWithoutGaps.keys;
     final values = <String, double>{};
     for (final pkg in pkgNamesToCheck) {
@@ -583,7 +585,7 @@ class _LikeScore {
 class _LikeTracker {
   final _values = <String, _LikeScore>{};
   bool _changed = false;
-  DateTime _lastUpdated;
+  DateTime? _lastUpdated;
 
   double getLikeScore(String package) {
     return _values[package]?.score ?? 0.0;
@@ -608,7 +610,7 @@ class _LikeTracker {
       return;
     }
     final now = DateTime.now();
-    if (_lastUpdated != null && now.difference(_lastUpdated).inHours < 12) {
+    if (_lastUpdated != null && now.difference(_lastUpdated!).inHours < 12) {
       // we don't need to update too frequently
       return;
     }

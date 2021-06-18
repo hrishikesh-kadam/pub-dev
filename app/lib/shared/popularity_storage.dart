@@ -41,7 +41,7 @@ class PopularityStorage {
     );
   }
 
-  DateTime get lastFetched => _popularity.lastUpdated;
+  DateTime? get lastFetched => _popularity.lastUpdated;
   String? get dateRange => _popularity.value?.dateRange;
   int get count => _popularity.value?.values.length ?? 0;
 

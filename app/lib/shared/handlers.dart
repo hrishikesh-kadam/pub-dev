@@ -2,10 +2,13 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:logging/logging.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import 'package:shelf/shelf.dart' as shelf;
 
 import '../frontend/request_context.dart';
@@ -47,7 +50,7 @@ shelf.Response jsonResponse(
   Map map, {
   int status = 200,
   bool indentJson = false,
-  Map<String, String> headers,
+  Map<String, String>? headers,
 }) {
   final body = (indentJson || requestContext.indentJson)
       ? _prettyJson.convert(map)
@@ -65,7 +68,7 @@ shelf.Response jsonResponse(
 shelf.Response htmlResponse(
   String content, {
   int status = 200,
-  Map<String, String> headers,
+  Map<String, String>? headers,
   bool noReferrer = false,
 }) {
   headers ??= <String, String>{};
@@ -86,7 +89,7 @@ shelf.Response rejectRobotsHandler(shelf.Request request) =>
     shelf.Response.ok('User-agent: *\nDisallow: /\n');
 
 /// Combines a response for /debug requests
-shelf.Response debugResponse([Map<String, dynamic> data]) {
+shelf.Response debugResponse([Map<String, dynamic>? data]) {
   final map = <String, dynamic>{
     'env': {
       'GAE_VERSION': Platform.environment['GAE_VERSION'],
@@ -120,25 +123,24 @@ shelf.Response debugResponse([Map<String, dynamic> data]) {
   if (data != null) {
     map.addAll(data);
   }
-  if (popularityStorage != null) {
     map['popularity'] = {
       'fetched': popularityStorage.lastFetched?.toIso8601String(),
       'count': popularityStorage.count,
       'dateRange': popularityStorage.dateRange,
     };
-  }
   return jsonResponse(map, indentJson: true);
 }
 
-bool isNotModified(shelf.Request request, DateTime lastModified, String etag) {
-  DateTime ifModifiedSince;
+bool isNotModified(shelf.Request request, DateTime? lastModified, String? etag) {
+  DateTime? ifModifiedSince;
   try {
     ifModifiedSince = request.ifModifiedSince;
   } on FormatException {
     _logger.info('invalid If-Modified-Since header');
     return false;
   }
-  if (ifModifiedSince != null &&
+  // TODO: use only `ifModifiedSince` after the null-safety migration
+  if (request.ifModifiedSince != null &&
       lastModified != null &&
       !lastModified.isAfter(ifModifiedSince)) {
     return true;

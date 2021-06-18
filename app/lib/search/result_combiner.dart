@@ -2,12 +2,13 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-import 'dart:async';
+// @dart=2.12
 
-import 'package:meta/meta.dart';
+import 'dart:async';
 
 import 'dart_sdk_mem_index.dart';
 import 'flutter_sdk_mem_index.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import 'search_service.dart';
 
 /// Combines the results from the primary package index and the optional Dart
@@ -18,9 +19,9 @@ class SearchResultCombiner {
   final FlutterSdkMemIndex flutterSdkMemIndex;
 
   SearchResultCombiner({
-    @required this.primaryIndex,
-    @required this.dartSdkMemIndex,
-    @required this.flutterSdkMemIndex,
+    required this.primaryIndex,
+    required this.dartSdkMemIndex,
+    required this.flutterSdkMemIndex,
   });
 
   Future<PackageSearchResult> search(ServiceSearchQuery query) async {

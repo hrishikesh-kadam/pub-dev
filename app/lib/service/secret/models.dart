@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import '../../shared/datastore.dart' as db;
 
 /// A secret value stored in Datastore, typically an access credential used by
@@ -9,7 +11,7 @@ import '../../shared/datastore.dart' as db;
 @db.Kind(name: 'Secret', idType: db.IdType.String)
 class Secret extends db.Model {
   @db.StringProperty(required: true)
-  String value;
+  String? value;
 }
 
 /// Identifiers of the [Secret] keys.

@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 library pub_dartlang_org.upload_signer_service;
 
 import 'dart:async';
@@ -17,6 +19,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:client_data/package_api.dart';
 
+// ignore: import_of_legacy_library_into_null_safe
 import '../shared/configuration.dart';
 import '../shared/env_config.dart';
 import '../shared/utils.dart' show jsonUtf8Encoder;
@@ -35,7 +38,7 @@ Future<UploadSignerService> createUploadSigner(http.Client authClient) async {
   if (envConfig.isRunningLocally) {
     return _ServiceAccountBasedUploadSigner();
   } else {
-    final email = activeConfiguration.uploadSignerServiceAccount;
+    final email = activeConfiguration.uploadSignerServiceAccount as String?;
     // TODO: remove this fallback after upgrading to appengine 0.12.0
     if (email == null) {
       throw AssertionError(
@@ -119,7 +122,7 @@ class _ServiceAccountBasedUploadSigner extends UploadSignerService {
     if (envConfig.gcloudKey == null) {
       throw Exception('Missing GCLOUD_* environments for package:appengine');
     }
-    final path = envConfig.gcloudKey;
+    final path = envConfig.gcloudKey!;
     final content = File(path).readAsStringSync();
     final account = auth.ServiceAccountCredentials.fromJson(content);
     return _ServiceAccountBasedUploadSigner._(

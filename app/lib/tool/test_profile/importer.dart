@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'package:client_data/admin_api.dart';
 import 'package:meta/meta.dart';
 import 'package:http/http.dart' as http;
@@ -10,19 +12,21 @@ import 'package:client_data/package_api.dart';
 import 'package:client_data/publisher_api.dart';
 
 import '../../shared/tags.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../utils/pub_api_client.dart';
 
 import 'import_source.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import 'models.dart';
 import 'normalizer.dart';
 
 /// Imports [profile] data into the Datastore.
 @visibleForTesting
 Future<void> importProfile({
-  @required TestProfile profile,
-  @required ImportSource source,
-  String pubHostedUrl,
-  String adminUserEmail,
+  required TestProfile profile,
+  required ImportSource source,
+  String? pubHostedUrl,
+  String? adminUserEmail,
 }) async {
   final resolvedVersions = await source.resolveVersions(profile);
   resolvedVersions.sort();
@@ -74,7 +78,7 @@ Future<void> importProfile({
         final uploadInfo = await client.getPackageUploadUrl();
 
         final request = http.MultipartRequest('POST', Uri.parse(uploadInfo.url))
-          ..fields.addAll(uploadInfo.fields)
+          ..fields.addAll(uploadInfo.fields!)
           ..files.add(http.MultipartFile.fromBytes('file', bytes))
           ..followRedirects = false;
         final uploadRs = await request.send();
@@ -84,7 +88,7 @@ Future<void> importProfile({
         }
 
         final callbackUri =
-            Uri.parse(uploadInfo.fields['success_action_redirect']);
+            Uri.parse(uploadInfo.fields!['success_action_redirect']!);
         await client
             .finishPackageUpload(callbackUri.queryParameters['upload_id']);
       },
@@ -95,7 +99,7 @@ Future<void> importProfile({
     final activeEmail = lastActiveUploaderEmails[packageName];
 
     await withPubApiClient(
-      bearerToken: _fakeToken(activeEmail),
+      bearerToken: _fakeToken(activeEmail!),
       pubHostedUrl: pubHostedUrl,
       fn: (client) async {
         // update publisher

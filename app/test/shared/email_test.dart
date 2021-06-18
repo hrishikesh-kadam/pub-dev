@@ -102,7 +102,7 @@ void main() {
 
   group('EmailAddress format', () {
     test('empty', () {
-      expect(EmailAddress(null, null).toString(), null);
+      expect(EmailAddress(null, null).toString(), '');
     });
 
     test('name only', () {

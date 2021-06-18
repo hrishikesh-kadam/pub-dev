@@ -2,15 +2,16 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-import 'package:meta/meta.dart';
+// @dart=2.12
 
+// ignore: import_of_legacy_library_into_null_safe
 import 'models.dart';
 
 /// Creates a new TestProfile with the missing entities (e.g. users or publishers)
 /// created.
 TestProfile normalize(
   TestProfile profile, {
-  List<ResolvedVersion> resolvedVersions,
+  List<ResolvedVersion>? resolvedVersions,
 }) {
   final users = <String, TestUser>{};
   final publishers = <String, TestPublisher>{};
@@ -94,7 +95,7 @@ TestUser _createUserIfNeeded(Map<String, TestUser> users, String email) {
 TestPublisher _createPublisherIfNeeded(
   Map<String, TestPublisher> publishers,
   String publisherId, {
-  @required String memberEmail,
+  required String memberEmail,
 }) {
   return publishers.putIfAbsent(publisherId, () {
     return TestPublisher(

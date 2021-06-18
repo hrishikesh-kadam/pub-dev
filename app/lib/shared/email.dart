@@ -2,9 +2,9 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-import 'dart:io';
+// @dart=2.12
 
-import 'package:meta/meta.dart';
+import 'dart:io';
 
 import 'urls.dart';
 
@@ -23,8 +23,8 @@ final _defaultFrom = EmailAddress(
 
 /// Represents a parsed email address.
 class EmailAddress {
-  final String name;
-  final String email;
+  final String? name;
+  final String? email;
 
   EmailAddress(this.name, this.email);
 
@@ -32,9 +32,9 @@ class EmailAddress {
 
   @override
   String toString() {
-    if (isEmpty) return null;
-    if (email == null) return name;
-    if (name == null) return email;
+    if (isEmpty) return '';
+    if (email == null) return name ?? '';
+    if (name == null) return email ?? '';
     return '$name <$email>';
   }
 }
@@ -48,7 +48,7 @@ class EmailAddress {
 /// - Parsing e-mail field in `pubspec.yaml`.
 /// - Checking that the response from the OAuth provider is not garbage.
 /// - Internal integrity check for the most obvious failures.
-bool looksLikeEmail(String email) {
+bool looksLikeEmail(String? email) {
   if (email == null) return false;
   if (email.length < 5) return false;
   if (email.contains('..')) return false;
@@ -121,10 +121,10 @@ String reflowBodyText(String input, {int lineLength = 72}) {
 
 /// Creates the [EmailMessage] that we be sent on new package upload.
 EmailMessage createPackageUploadedEmail({
-  @required String packageName,
-  @required String packageVersion,
-  @required String uploaderEmail,
-  @required List<EmailAddress> authorizedUploaders,
+  required String packageName,
+  required String packageVersion,
+  required String uploaderEmail,
+  required List<EmailAddress> authorizedUploaders,
 }) {
   final url =
       pkgPageUrl(packageName, version: packageVersion, includeHost: true);
@@ -148,10 +148,10 @@ With appreciation, the Dart package site admin
 /// Creates the [EmailMessage] that will be sent to users about new invitations
 /// they need to confirm.
 EmailMessage createInviteEmail({
-  @required String invitedEmail,
-  @required String subject,
-  @required String inviteText,
-  @required String consentUrl,
+  required String invitedEmail,
+  required String subject,
+  required String inviteText,
+  required String consentUrl,
 }) {
   final bodyText = '''Dear Dart developer,
 
