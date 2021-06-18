@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:async';
 import 'dart:convert' show json;
 import 'dart:io';
@@ -64,8 +66,8 @@ Message _toMessage(EmailMessage input) {
     ..text = input.bodyText;
 }
 
-Address _toAddress(EmailAddress input) =>
-    input == null ? null : Address(input.email, input.name);
+Address? _toAddress(EmailAddress? input) =>
+    input == null ? null : Address(input.email!, input.name);
 
 /// Send emails through the gmail SMTP relay.
 ///
@@ -107,7 +109,7 @@ class _GmailSmtpRelay implements EmailSender {
   final http.Client _authClient;
 
   DateTime _accessTokenRefreshed = DateTime(0);
-  Future<String> _accessToken;
+  Future<String>? _accessToken;
 
   _GmailSmtpRelay(
     this._serviceAccountEmail,
@@ -156,7 +158,7 @@ class _GmailSmtpRelay implements EmailSender {
 
     // For documentation see:
     // https://support.google.com/a/answer/176600?hl=en
-    return gmailRelaySaslXoauth2(_impersonatedGSuiteUser, await _accessToken);
+    return gmailRelaySaslXoauth2(_impersonatedGSuiteUser, await _accessToken!);
   }
 
   /// Create an access_token for [_impersonatedGSuiteUser] using the

@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:async';
 
 import 'package:client_data/account_api.dart' as account_api;
@@ -11,13 +13,16 @@ import 'package:logging/logging.dart';
 
 import '../account/backend.dart';
 import '../account/consent_backend.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../audit/models.dart';
 import '../shared/datastore.dart';
 import '../shared/email.dart';
 import '../shared/exceptions.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../shared/redis_cache.dart' show cache, EntryPurgeExt;
 import 'domain_verifier.dart' show domainVerifier;
 
+// ignore: import_of_legacy_library_into_null_safe
 import 'models.dart';
 
 final _logger = Logger('pub.publisher.backend');
@@ -40,10 +45,10 @@ class PublisherBackend {
   PublisherBackend(this._db);
 
   /// Loads a publisher (or returns null if it does not exists).
-  Future<Publisher> getPublisher(String publisherId) async {
+  Future<Publisher?> getPublisher(String publisherId) async {
     checkPublisherIdParam(publisherId);
     final pKey = _db.emptyKey.append(Publisher, id: publisherId);
-    return await _db.lookupValue<Publisher>(pKey, orElse: () => null);
+    return await _db.lookupOrNull<Publisher>(pKey);
   }
 
   /// List publishers (in no specific order, it will be listed by their
@@ -86,11 +91,11 @@ class PublisherBackend {
         _logger.shout('A user has more than 100 publishers.');
       }
       final publishers = await _db.lookup<Publisher>(publisherKeys);
-      publishers.sort((a, b) => a.publisherId.compareTo(b.publisherId));
+      publishers.sort((a, b) => a!.publisherId.compareTo(b!.publisherId));
       return PublisherPage(
         publishers: publishers
             .map((p) => PublisherSummary(
-                  publisherId: p.publisherId,
+                  publisherId: p!.publisherId,
                   created: p.created,
                 ))
             .toList(),
@@ -99,20 +104,19 @@ class PublisherBackend {
   }
 
   /// Loads the [PublisherMember] instance for [userId] (or returns null if it does not exists).
-  Future<PublisherMember> getPublisherMember(
+  Future<PublisherMember?> getPublisherMember(
       String publisherId, String userId) async {
     checkPublisherIdParam(publisherId);
     ArgumentError.checkNotNull(userId, 'userId');
     final mKey = _db.emptyKey
         .append(Publisher, id: publisherId)
         .append(PublisherMember, id: userId);
-    return await _db.lookupValue<PublisherMember>(mKey, orElse: () => null);
+    return await _db.lookupOrNull<PublisherMember>(mKey);
   }
 
   /// Whether the User [userId] has admin permissions on the publisher.
-  Future<bool> isMemberAdmin(String publisherId, String userId) async {
+  Future<bool> isMemberAdmin(String publisherId, String? userId) async {
     checkPublisherIdParam(publisherId);
-    ArgumentError.checkNotNull(publisherId, 'publisherId');
     if (userId == null) return false;
     final member = await getPublisherMember(publisherId, userId);
     if (member == null) return false;
@@ -162,7 +166,7 @@ class PublisherBackend {
     final now = DateTime.now().toUtc();
     await withRetryTransaction(_db, (tx) async {
       final key = _db.emptyKey.append(Publisher, id: publisherId);
-      final p = await tx.lookupValue<Publisher>(key, orElse: () => null);
+      final p = await tx.lookupOrNull<Publisher>(key);
       if (p != null) {
         // Check that publisher is the same as what we would create.
         if (p.created.isBefore(now.subtract(Duration(minutes: 10))) ||
@@ -242,11 +246,11 @@ class PublisherBackend {
 
       // If websiteUrl has changed, check that it's under the [publisherId] domain.
       if (update.websiteUrl != null && p.websiteUrl != update.websiteUrl) {
-        final parsedUrl = Uri.tryParse(update.websiteUrl);
+        final parsedUrl = Uri.tryParse(update.websiteUrl!);
         final isValid = parsedUrl != null && parsedUrl.isAbsolute;
         InvalidInputException.check(isValid, 'Not a valid URL.');
         InvalidInputException.checkAnyOf(
-            parsedUrl.scheme, 'scheme', ['http', 'https']);
+            parsedUrl!.scheme, 'scheme', ['http', 'https']);
 
         InvalidInputException.check(parsedUrl.toString() == update.websiteUrl,
             'The parsed URL does not match its original form.');
@@ -258,13 +262,13 @@ class PublisherBackend {
           update.contactEmail != p.contactEmail) {
         InvalidInputException.checkStringLength(update.contactEmail, 'email',
             maximum: 4096);
-        InvalidInputException.check(isValidEmail(update.contactEmail),
+        InvalidInputException.check(isValidEmail(update.contactEmail!),
             'Invalid email: `${update.contactEmail}`');
 
         bool contactEmailMatchedAdmin = false;
 
         final usersByEmail =
-            await accountBackend.lookupUsersByEmail(update.contactEmail);
+            await accountBackend.lookupUsersByEmail(update.contactEmail!);
         if (usersByEmail.isNotEmpty) {
           for (final user in usersByEmail) {
             if (await isMemberAdmin(publisherId, user.userId)) {
@@ -278,7 +282,7 @@ class PublisherBackend {
         if (!contactEmailMatchedAdmin) {
           await consentBackend.invitePublisherContact(
             publisherId: publisherId,
-            contactEmail: update.contactEmail,
+            contactEmail: update.contactEmail!,
           );
         }
       }
@@ -383,7 +387,7 @@ class PublisherBackend {
 
   /// The list of email addresses of the members with admin roles. The list
   /// should be used to notify admins on upload events.
-  Future<List<String>> getAdminMemberEmails(String publisherId) async {
+  Future<List<String?>> getAdminMemberEmails(String publisherId) async {
     checkPublisherIdParam(publisherId);
     final key = _db.emptyKey.append(Publisher, id: publisherId);
     final query = _db.query<PublisherMember>(ancestorKey: key);
@@ -398,7 +402,7 @@ class PublisherBackend {
     final user = await requireAuthenticatedUser();
     final p = await requirePublisherAdmin(publisherId, user.userId);
     final key = p.key.append(PublisherMember, id: userId);
-    final pm = await _db.lookupValue<PublisherMember>(key, orElse: () => null);
+    final pm = await _db.lookupOrNull<PublisherMember>(key);
     if (pm == null) {
       throw NotFoundException.resource('member: $userId');
     }
@@ -415,7 +419,7 @@ class PublisherBackend {
     final user = await requireAuthenticatedUser();
     final p = await requirePublisherAdmin(publisherId, user.userId);
     final key = p.key.append(PublisherMember, id: userId);
-    final pm = await _db.lookupValue<PublisherMember>(key, orElse: () => null);
+    final pm = await _db.lookupOrNull<PublisherMember>(key);
     if (pm == null) {
       throw NotFoundException.resource('member: $userId');
     }
@@ -451,7 +455,7 @@ class PublisherBackend {
     }
 
     final key = p.key.append(PublisherMember, id: userId);
-    final pm = await _db.lookupValue<PublisherMember>(key, orElse: () => null);
+    final pm = await _db.lookupOrNull<PublisherMember>(key);
     if (pm != null) {
       final memberUser = await accountBackend.lookupUserById(userId);
       final auditLogRecord = AuditLogRecord.publisherMemberRemoved(
@@ -474,8 +478,7 @@ class PublisherBackend {
       final key = _db.emptyKey
           .append(Publisher, id: publisherId)
           .append(PublisherMember, id: userId);
-      final member =
-          await tx.lookupValue<PublisherMember>(key, orElse: () => null);
+      final member = await tx.lookupOrNull<PublisherMember>(key);
       if (member != null) return;
       final now = DateTime.now().toUtc();
       tx.queueMutations(inserts: [
@@ -499,7 +502,7 @@ class PublisherBackend {
     return api.PublisherMember(
       userId: pm.userId,
       role: pm.role,
-      email: await accountBackend.getEmailOfUserId(pm.userId),
+      email: (await accountBackend.getEmailOfUserId(pm.userId))!,
     );
   }
 }
@@ -516,16 +519,16 @@ api.PublisherInfo _asPublisherInfo(Publisher p) => api.PublisherInfo(
 /// Throws AuthenticationException if the user is provided.
 /// Throws AuthorizationException if the user is not an admin for the publisher.
 Future<Publisher> requirePublisherAdmin(
-    String publisherId, String userId) async {
+    String? publisherId, String userId) async {
   ArgumentError.checkNotNull(userId, 'userId');
-  final p = await publisherBackend.getPublisher(publisherId);
+  ArgumentError.checkNotNull(publisherId, 'publisherId');
+  final p = await publisherBackend.getPublisher(publisherId!);
   if (p == null) {
     throw NotFoundException('Publisher $publisherId does not exists.');
   }
 
-  final member = await publisherBackend._db.lookupValue<PublisherMember>(
-      p.key.append(PublisherMember, id: userId),
-      orElse: () => null);
+  final member = await publisherBackend._db
+      .lookupOrNull<PublisherMember>(p.key.append(PublisherMember, id: userId));
 
   if (member == null || member.role != PublisherMemberRole.admin) {
     _logger.info(
@@ -536,7 +539,7 @@ Future<Publisher> requirePublisherAdmin(
 }
 
 /// Purge [cache] entries for given [publisherId].
-Future purgePublisherCache({String publisherId}) async {
+Future purgePublisherCache({String? publisherId}) async {
   await Future.wait([
     if (publisherId != null)
       cache.uiPublisherPackagesPage(publisherId).purgeAndRepeat(),

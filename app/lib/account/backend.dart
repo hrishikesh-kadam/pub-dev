@@ -2,21 +2,26 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:async';
 import 'dart:convert';
 
 import 'package:gcloud/service_scope.dart' as ss;
 import 'package:logging/logging.dart';
-import 'package:meta/meta.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import 'package:neat_cache/neat_cache.dart';
 
+// ignore: import_of_legacy_library_into_null_safe
 import '../package/models.dart';
 import '../shared/datastore.dart';
 import '../shared/exceptions.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../shared/redis_cache.dart' show cache, EntryPurgeExt;
 import '../shared/utils.dart';
 
 import 'auth_provider.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import 'models.dart';
 import 'session_cookie.dart' as session_cookie;
 
@@ -51,7 +56,7 @@ void registerAuthenticatedUser(User user) =>
     ss.register(#_authenticated_user, user);
 
 /// The active authenticated user.
-User get _authenticatedUser => ss.lookup(#_authenticated_user) as User;
+User? get _authenticatedUser => ss.lookup(#_authenticated_user) as User?;
 
 /// Sets the active user's session data object.
 void registerUserSessionData(UserSessionData value) =>
@@ -67,8 +72,8 @@ void registerUserSessionData(UserSessionData value) =>
 /// `id_token` be present as `Authentication: Bearer <id_token>` header instead.
 /// Such scheme does not work for `GET` requests that serve content to the
 /// browser, and hence, we employ session cookies for this purpose.
-UserSessionData get userSessionData =>
-    ss.lookup(#_userSessionData) as UserSessionData;
+UserSessionData? get userSessionData =>
+    ss.lookup(#_userSessionData) as UserSessionData?;
 
 /// Returns the current authenticated user.
 ///
@@ -78,10 +83,10 @@ Future<User> requireAuthenticatedUser() async {
   if (_authenticatedUser == null) {
     throw AuthenticationException.authenticationRequired();
   }
-  if (_authenticatedUser.isBlocked) {
+  if (_authenticatedUser!.isBlocked) {
     throw AuthorizationException.blocked();
   }
-  return _authenticatedUser;
+  return _authenticatedUser!;
 }
 
 /// Represents the backend for the account handling and authentication.
@@ -94,14 +99,14 @@ class AccountBackend {
   AccountBackend(this._db);
 
   /// Returns the `User` entry for the [userId] or null if it does not exists.
-  Future<User> lookupUserById(String userId) async {
+  Future<User?> lookupUserById(String userId) async {
     return (await lookupUsersById(<String>[userId])).single;
   }
 
   /// Returns the list of `User` entries for the corresponding id in [userIds].
   ///
   /// Returns null in the positions where a [User] entry was missing.
-  Future<List<User>> lookupUsersById(List<String> userIds) async {
+  Future<List<User?>> lookupUsersById(List<String> userIds) async {
     final keys =
         userIds.map((id) => _db.emptyKey.append(User, id: id)).toList();
     return await _db.lookup<User>(keys);
@@ -110,9 +115,9 @@ class AccountBackend {
   /// Returns the email address of the [userId].
   ///
   /// Uses in-memory cache to store entries locally for up to 10 minutes.
-  Future<String> getEmailOfUserId(String userId) async {
+  Future<String?> getEmailOfUserId(String userId) async {
     final entry = _emailCache[userId];
-    String email = await entry.get();
+    var email = await entry.get() as String?;
     if (email != null) {
       return email;
     }
@@ -128,8 +133,8 @@ class AccountBackend {
   /// Returns null in the positions where a [User] entry was missing.
   ///
   /// Uses in-memory cache to store entries locally for up to 10 minutes.
-  Future<List<String>> getEmailsOfUserIds(List<String> userIds) async {
-    final result = <String>[];
+  Future<List<String?>> getEmailsOfUserIds(List<String> userIds) async {
+    final result = <String?>[];
     for (String userId in userIds) {
       result.add(await getEmailOfUserId(userId));
     }
@@ -168,10 +173,10 @@ class AccountBackend {
   }
 
   /// Returns [Like] if [userId] likes [package], otherwise returns `null`.
-  Future<Like> getPackageLikeStatus(String userId, String package) async {
+  Future<Like?> getPackageLikeStatus(String userId, String package) async {
     final key = _db.emptyKey.append(User, id: userId).append(Like, id: package);
 
-    return await _db.lookupValue<Like>(key, orElse: () => null);
+    return await _db.lookupOrNull<Like>(key);
   }
 
   /// Returns a list with [LikeData] of all the packages that the given
@@ -192,14 +197,14 @@ class AccountBackend {
   Future<Like> likePackage(User user, String package) async {
     final res = await withRetryTransaction<Like>(_db, (tx) async {
       final packageKey = _db.emptyKey.append(Package, id: package);
-      final p = await tx.lookupValue<Package>(packageKey, orElse: () => null);
+      final p = await tx.lookupOrNull<Package>(packageKey);
       if (p == null) {
         throw NotFoundException.resource(package);
       }
 
       final key =
           _db.emptyKey.append(User, id: user.id).append(Like, id: package);
-      final oldLike = await tx.lookupValue<Like>(key, orElse: () => null);
+      final oldLike = await tx.lookupOrNull<Like>(key);
 
       if (oldLike != null) {
         return oldLike;
@@ -224,14 +229,14 @@ class AccountBackend {
   Future<void> unlikePackage(User user, String package) async {
     await withRetryTransaction<void>(_db, (tx) async {
       final packageKey = _db.emptyKey.append(Package, id: package);
-      final p = await tx.lookupValue<Package>(packageKey, orElse: () => null);
+      final p = await tx.lookupOrNull<Package>(packageKey);
       if (p == null) {
         throw NotFoundException.resource(package);
       }
 
       final likeKey =
           _db.emptyKey.append(User, id: user.id).append(Like, id: package);
-      final like = await tx.lookupValue<Like>(likeKey, orElse: () => null);
+      final like = await tx.lookupOrNull<Like>(likeKey);
 
       if (like == null) {
         return;
@@ -272,7 +277,7 @@ class AccountBackend {
   /// When no associated User entry exists in Datastore, this method will create
   /// a new one. When the authenticated email of the user changes, the email
   /// field will be updated to the latest one.
-  Future<R> withBearerToken<R>(String token, Future<R> Function() fn) async {
+  Future<R> withBearerToken<R>(String? token, Future<R> Function() fn) async {
     if (token == null || token.isEmpty) {
       throw AuthenticationException.authenticationRequired();
     }
@@ -296,12 +301,10 @@ class AccountBackend {
     }) as R;
   }
 
-  Future<User> _lookupUserByOauthUserId(String oauthUserId) async {
+  Future<User?> _lookupUserByOauthUserId(String oauthUserId) async {
     // TODO: This should be cached.
-    final oauthUserMapping = await _db.lookupValue<OAuthUserID>(
-      _db.emptyKey.append(OAuthUserID, id: oauthUserId),
-      orElse: () => null,
-    );
+    final oauthUserMapping = await _db.lookupOrNull<OAuthUserID>(
+        _db.emptyKey.append(OAuthUserID, id: oauthUserId));
     if (oauthUserMapping == null) {
       return null;
     }
@@ -326,7 +329,7 @@ class AccountBackend {
     });
   }
 
-  Future<User> _lookupOrCreateUserByOauthUserId(AuthResult auth) async {
+  Future<User?> _lookupOrCreateUserByOauthUserId(AuthResult auth) async {
     ArgumentError.checkNotNull(auth, 'auth');
     if (auth.oauthUserId == null) {
       throw StateError('Authenticated user ${auth.email} without userId.');
@@ -337,12 +340,12 @@ class AccountBackend {
     // Attempt to lookup the user, the common case is that the user exists.
     // If the user exists, it's always cheaper to lookup the user outside a
     // transaction.
-    final user = await _lookupUserByOauthUserId(auth.oauthUserId);
+    final user = await _lookupUserByOauthUserId(auth.oauthUserId!);
     if (user != null &&
         user.email != auth.email &&
         auth.email != null &&
-        auth.email.isNotEmpty) {
-      return await _updateUserEmail(user, auth.email);
+        auth.email!.isNotEmpty) {
+      return await _updateUserEmail(user, auth.email!);
     }
     if (user != null) {
       return user;
@@ -437,8 +440,8 @@ class AccountBackend {
   /// JSON APIs whether fetching data or updating data cannot be authorized with
   /// a cookie carrying the `sessionId`.
   Future<UserSessionData> createNewSession({
-    @required String name,
-    @required String imageUrl,
+    required String name,
+    required String imageUrl,
   }) async {
     final user = await requireAuthenticatedUser();
     final now = DateTime.now().toUtc();
@@ -457,7 +460,7 @@ class AccountBackend {
   /// Parse [cookieString] and lookup session if cookie value is available.
   ///
   /// Returns `null` if the session does not exists or any issue is present
-  Future<UserSessionData> parseAndLookupSessionCookie(
+  Future<UserSessionData?> parseAndLookupSessionCookie(
       String cookieString) async {
     try {
       final sessionId = session_cookie.parseSessionCookie(cookieString);
@@ -472,11 +475,11 @@ class AccountBackend {
 
   /// Returns the user session associated with the [sessionId] or null if it
   /// does not exists.
-  Future<UserSessionData> _lookupSession(String sessionId) async {
+  Future<UserSessionData?> _lookupSession(String sessionId) async {
     ArgumentError.checkNotNull(sessionId, 'sessionId');
 
     final cacheEntry = cache.userSessionData(sessionId);
-    final cached = await cacheEntry.get();
+    final cached = await cacheEntry.get() as UserSessionData?;
     if (cached != null && DateTime.now().isBefore(cached.expires)) {
       return cached;
     }
@@ -524,7 +527,7 @@ class AccountBackend {
     var expireSessions = false;
     await withRetryTransaction(_db, (tx) async {
       final user =
-          await tx.lookupValue<User>(_db.emptyKey.append(User, id: userId));
+          await tx.lookupOrNull<User>(_db.emptyKey.append(User, id: userId));
       if (user == null) throw NotFoundException.resource('User:$userId');
 
       if (user.isBlocked == isBlocked) return;
@@ -551,7 +554,7 @@ class AccountBackend {
 
 /// Purge [cache] entries for given [userId].
 Future<void> purgeAccountCache({
-  @required String userId,
+  required String userId,
 }) async {
   await Future.wait([
     cache.userPackageLikes(userId).purgeAndRepeat(),

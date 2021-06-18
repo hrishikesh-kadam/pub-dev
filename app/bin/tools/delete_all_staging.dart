@@ -13,7 +13,7 @@ import 'package:pub_dev/dartdoc/models.dart';
 import 'package:pub_dev/job/backend.dart';
 import 'package:pub_dev/package/models.dart';
 import 'package:pub_dev/publisher/models.dart';
-import 'package:pub_dev/scorecard/backend.dart';
+import 'package:pub_dev/scorecard/models.dart';
 import 'package:pub_dev/service/entrypoint/tools.dart';
 import 'package:pub_dev/service/secret/models.dart';
 import 'package:pub_dev/shared/datastore.dart';

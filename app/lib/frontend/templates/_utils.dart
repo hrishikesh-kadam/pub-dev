@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:convert';
 
 import 'package:path/path.dart' as p;
@@ -19,19 +21,16 @@ String renderFile(
 }) {
   final filename = file.filename;
   final content = file.text;
-  if (content != null) {
-    if (_isMarkdownFile(filename)) {
-      return markdownToHtml(content,
-          baseUrl: baseUrl,
-          baseDir: p.dirname(filename),
-          isChangelog: isChangelog);
-    } else if (_isDartFile(filename)) {
-      return _renderDartCode(content);
-    } else {
-      return _renderPlainText(content);
-    }
+  if (_isMarkdownFile(filename)) {
+    return markdownToHtml(content,
+        baseUrl: baseUrl,
+        baseDir: p.dirname(filename),
+        isChangelog: isChangelog)!;
+  } else if (_isDartFile(filename)) {
+    return _renderDartCode(content);
+  } else {
+    return _renderPlainText(content);
   }
-  return null;
 }
 
 String _escapeAngleBrackets(String msg) =>
@@ -47,7 +46,7 @@ bool _isMarkdownFile(String filename) {
 bool _isDartFile(String filename) => filename.toLowerCase().endsWith('.dart');
 
 String _renderDartCode(String text) =>
-    markdownToHtml('````dart\n${text.trim()}\n````\n');
+    markdownToHtml('````dart\n${text.trim()}\n````\n')!;
 
 String _renderPlainText(String text) =>
     '<div class="highlight"><pre>${_escapeAngleBrackets(text)}</pre></div>';

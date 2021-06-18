@@ -65,7 +65,8 @@ class YoutubeBackend {
     final now = DateTime.now().toUtc();
     random ??= math.Random(
         now.year * 1000 + now.month * 100 + now.day * 10 + now.hour);
-    final selectable = List<PkgOfWeekVideo>.from(_packageOfWeekVideoList.value!);
+    final selectable =
+        List<PkgOfWeekVideo>.from(_packageOfWeekVideoList.value!);
     final selected = <PkgOfWeekVideo>[];
     while (selected.length < count && selectable.isNotEmpty) {
       if (selected.isEmpty) {
@@ -121,7 +122,8 @@ class _PkgOfWeekVideoFetcher {
           (i) => PkgOfWeekVideo(
             videoId: i.contentDetails!.videoId!,
             title: i.snippet!.title!,
-            description: (i.snippet?.description ?? '').trim().split('\n').first,
+            description:
+                (i.snippet?.description ?? '').trim().split('\n').first,
             thumbnailUrl: i.snippet!.thumbnails!.high!.url!,
           ),
         ));

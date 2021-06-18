@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 /// Logic to do with session cookie parsing and reading.
 library session_cookie;
 
@@ -46,7 +48,7 @@ Map<String, String> createSessionCookie(String sessionId, DateTime expires) {
 /// Parse [cookieString] and return `sessionId` or `null`.
 ///
 /// The [cookieString] is the value of the `cookie:` request header.
-String parseSessionCookie(String cookieString) {
+String? parseSessionCookie(String cookieString) {
   final sessionId = parseCookieHeader(cookieString)['$_pubSessionCookieName'];
   // An empty sessionId cookie is the result of reseting the cookie.
   // Browser usually won't send this, but let's make sure we handle the case.

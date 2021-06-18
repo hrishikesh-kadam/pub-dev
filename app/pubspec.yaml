@@ -37,7 +37,7 @@ dependencies:
   pub_package_reader:
     path: ../pkg/pub_package_reader
   pub_semver: '^2.0.0'
-  pubspec_parse: ^0.1.4
+  pubspec_parse: ^1.0.0
   shelf: '^0.7.9'
   shelf_router: ^0.7.4
   stack_trace: ^1.10.0
@@ -70,9 +70,10 @@ dev_dependencies:
 
 dependency_overrides:
   analyzer: ^1.0.0 # build tools
+  checked_yaml: ^2.0.0 #build_runner
   convert: ^3.0.0 # neat_cache
   http_parser: ^3.0.0 # shelf
   io: ^0.3.0 # build_runner
   json_annotation: '^3.0.0' # neat_periodic_task
   logging: ^1.0.0 # several dependencies
-  pubspec_parse: ^0.1.4 # build_runner
+  pubspec_parse: ^1.0.0 # build_runner

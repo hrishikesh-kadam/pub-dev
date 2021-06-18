@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 library pub_dartlang_org.backend;
 
 import 'dart:async';
@@ -19,24 +21,32 @@ import 'package:pub_semver/pub_semver.dart';
 
 import '../account/backend.dart';
 import '../account/consent_backend.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../account/models.dart' show User;
+// ignore: import_of_legacy_library_into_null_safe
 import '../analyzer/analyzer_client.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../audit/models.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../dartdoc/dartdoc_client.dart';
 import '../frontend/email_sender.dart';
 import '../publisher/backend.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../publisher/models.dart';
 import '../service/secret/backend.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../shared/configuration.dart';
 import '../shared/datastore.dart';
 import '../shared/email.dart';
 import '../shared/exceptions.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../shared/redis_cache.dart' show cache;
 import '../shared/storage.dart';
 import '../shared/urls.dart' as urls;
 import '../shared/utils.dart';
 import '../tool/utils/dart_sdk_version.dart';
 import 'model_properties.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import 'models.dart';
 import 'name_tracker.dart';
 import 'overrides.dart';
@@ -76,7 +86,7 @@ class PackageBackend {
   PackageBackend(
     DatastoreDB db,
     TarballStorage storage, {
-    int maxVersionsPerPackageOverride,
+    int? maxVersionsPerPackageOverride,
   })  : db = db,
         _storage = storage,
         _maxVersionsPerPackage =
@@ -85,15 +95,14 @@ class PackageBackend {
   /// Whether the package exists and is not withheld or deleted.
   Future<bool> isPackageVisible(String package) {
     return cache.packageVisible(package).get(() async {
-      final p = await db.lookupValue<Package>(
-          db.emptyKey.append(Package, id: package),
-          orElse: () => null);
+      final p = await db
+          .lookupOrNull<Package>(db.emptyKey.append(Package, id: package));
       return p != null && p.isVisible;
     });
   }
 
   /// Retrieves packages ordered by their latest version date.
-  Future<PackagePage> latestPackages({int offset, int limit}) async {
+  Future<PackagePage> latestPackages({int? offset, int? limit}) async {
     offset ??= 0;
     limit ??= 10;
     final query = db.query<Package>()
@@ -127,7 +136,7 @@ class PackageBackend {
 
   /// Retrieves package versions ordered by their latest version date.
   Future<List<PackageVersion>> latestPackageVersions(
-      {int offset, int limit}) async {
+      {int? offset, int? limit}) async {
     final pkgPage = await latestPackages(offset: offset, limit: limit);
     return lookupLatestVersions(pkgPage.packages);
   }
@@ -135,10 +144,8 @@ class PackageBackend {
   /// Returns the latest stable version of a package.
   Future<String> getLatestVersion(String package) async {
     return cache.packageLatestVersion(package).get(() async {
-      final p = await db.lookupValue<Package>(
-        db.emptyKey.append(Package, id: package),
-        orElse: () => null,
-      );
+      final p = await db
+          .lookupOrNull<Package>(db.emptyKey.append(Package, id: package));
       return p?.latestVersion;
     });
   }
@@ -151,18 +158,17 @@ class PackageBackend {
   /// Looks up a package by name.
   ///
   /// Returns `null` if the package doesn't exist.
-  Future<Package> lookupPackage(String packageName) async {
+  Future<Package?> lookupPackage(String packageName) async {
     final packageKey = db.emptyKey.append(Package, id: packageName);
-    return await db.lookupValue<Package>(packageKey, orElse: () => null);
+    return await db.lookupOrNull<Package>(packageKey);
   }
 
   /// Looks up a moderated package by name.
   ///
   /// Returns `null` if the package doesn't exist.
-  Future<ModeratedPackage> lookupModeratedPackage(String packageName) async {
+  Future<ModeratedPackage?> lookupModeratedPackage(String packageName) async {
     final packageKey = db.emptyKey.append(ModeratedPackage, id: packageName);
-    return await db.lookupValue<ModeratedPackage>(packageKey,
-        orElse: () => null);
+    return await db.lookupOrNull<ModeratedPackage>(packageKey);
   }
 
   /// Looks up a package by name.
@@ -183,49 +189,49 @@ class PackageBackend {
   ///
   /// Returns null if the version is not a semantic version or if the version
   /// entity does not exists in the datastore.
-  Future<PackageVersion> lookupPackageVersion(
+  Future<PackageVersion?> lookupPackageVersion(
       String package, String version) async {
-    version = canonicalizeVersion(version);
-    if (version == null) return null;
+    final canonicalVersion = canonicalizeVersion(version);
+    if (canonicalVersion == null) return null;
     final packageVersionKey = db.emptyKey
         .append(Package, id: package)
-        .append(PackageVersion, id: version);
-    return (await db.lookup([packageVersionKey])).first as PackageVersion;
+        .append(PackageVersion, id: canonicalVersion);
+    return await db.lookupOrNull<PackageVersion>(packageVersionKey);
   }
 
   /// Looks up a specific package version's info object.
   ///
   /// Returns null if the [version] is not a semantic version or if the info
   /// entity does not exists in the datastore.
-  Future<PackageVersionInfo> lookupPackageVersionInfo(
+  Future<PackageVersionInfo?> lookupPackageVersionInfo(
       String package, String version) async {
-    version = canonicalizeVersion(version);
-    if (version == null) return null;
-    final qvk = QualifiedVersionKey(package: package, version: version);
-    return await db.lookupValue<PackageVersionInfo>(
-        db.emptyKey.append(PackageVersionInfo, id: qvk.qualifiedVersion),
-        orElse: () => null);
+    final canonicalVersion = canonicalizeVersion(version);
+    if (canonicalVersion == null) return null;
+    final qvk =
+        QualifiedVersionKey(package: package, version: canonicalVersion);
+    return await db.lookupOrNull<PackageVersionInfo>(
+        db.emptyKey.append(PackageVersionInfo, id: qvk.qualifiedVersion));
   }
 
   /// Looks up a specific package version's asset object.
   ///
   /// Returns null if the [version] is not a semantic version or if the asset
   /// entity does not exists in the Datastore.
-  Future<PackageVersionAsset> lookupPackageVersionAsset(
+  Future<PackageVersionAsset?> lookupPackageVersionAsset(
       String package, String version, String assetKind) async {
-    version = canonicalizeVersion(version);
-    if (version == null) return null;
-    final qvk = QualifiedVersionKey(package: package, version: version);
-    return await db.lookupValue<PackageVersionAsset>(
-        db.emptyKey.append(PackageVersionAsset, id: qvk.assetId(assetKind)),
-        orElse: () => null);
+    final canonicalVersion = canonicalizeVersion(version);
+    if (canonicalVersion == null) return null;
+    final qvk =
+        QualifiedVersionKey(package: package, version: canonicalVersion);
+    return await db.lookupOrNull<PackageVersionAsset>(
+        db.emptyKey.append(PackageVersionAsset, id: qvk.assetId(assetKind)));
   }
 
   /// Looks up asset objects for the provided list of [keys].
   ///
   /// Returns `null` in the same index position if the asset entity does not
   /// exists in the Datastore.
-  Future<List<PackageVersionAsset>> lookupPackageVersionAssets(
+  Future<List<PackageVersionAsset?>> lookupPackageVersionAssets(
       Iterable<QualifiedVersionKey> keys, String assetKind) async {
     return await db.lookup<PackageVersionAsset>(keys
         .map((k) =>
@@ -250,8 +256,8 @@ class PackageBackend {
   /// Get a [Uri] which can be used to download a tarball of the pub package.
   Future<Uri> downloadUrl(String package, String version) async {
     InvalidInputException.checkSemanticVersion(version);
-    version = canonicalizeVersion(version);
-    return _storage.downloadUrl(package, version);
+    final cv = canonicalizeVersion(version);
+    return _storage.downloadUrl(package, cv!);
   }
 
   /// Updates the stable, prerelease and preview versions of [package].
@@ -259,7 +265,7 @@ class PackageBackend {
   /// Returns true if the values did change.
   Future<bool> updatePackageVersions(
     String package, {
-    Version dartSdkVersion,
+    Version? dartSdkVersion,
   }) async {
     _logger.info("Checking Package's versions fields for package `$package`.");
     final pkgKey = db.emptyKey.append(Package, id: package);
@@ -277,7 +283,7 @@ class PackageBackend {
 
       final oldStableVersion = p.latestSemanticVersion;
       final oldPrereleaseVersion = p.latestPrereleaseSemanticVersion;
-      final oldPreviewVersion = p.latestPreviewSemanticVersion;
+      final oldPreviewVersion = p.latestPreviewSemanticVersion as Version?;
 
       // reset field values
       p.latestVersionKey = null;
@@ -336,7 +342,7 @@ class PackageBackend {
   ///
   /// Return the number of updated packages.
   Future<int> updateAllPackageVersions(
-      {Version dartSdkVersion, int concurrency}) async {
+      {Version? dartSdkVersion, int? concurrency}) async {
     final pool = Pool(concurrency ?? 1);
     var count = 0;
     final futures = <Future>[];
@@ -373,7 +379,7 @@ class PackageBackend {
     }
 
     final pkgKey = db.emptyKey.append(Package, id: package);
-    String latestVersion;
+    String? latestVersion;
     await withRetryTransaction(db, (tx) async {
       final p = await tx.lookupOrNull<Package>(pkgKey);
       if (p == null) {
@@ -426,7 +432,7 @@ class PackageBackend {
   /// publisher admin).
   ///
   /// Returns false if the user is not an admin.
-  Future<bool> isPackageAdmin(Package p, String userId) async {
+  Future<bool> isPackageAdmin(Package p, String? userId) async {
     if (userId == null) {
       return false;
     }
@@ -447,7 +453,7 @@ class PackageBackend {
   ///
   /// Throws AuthenticationException if the user is provided.
   /// Throws AuthorizationException if the user is not an admin for the package.
-  Future<void> checkPackageAdmin(Package package, String userId) async {
+  Future<void> checkPackageAdmin(Package package, String? userId) async {
     if (userId == null) {
       throw AuthenticationException.authenticationRequired();
     }
@@ -472,7 +478,7 @@ class PackageBackend {
       String packageName) async {
     checkPackageVersionParams(packageName);
     final key = db.emptyKey.append(Package, id: packageName);
-    final package = await db.lookupValue<Package>(key, orElse: () => null);
+    final package = await db.lookupOrNull<Package>(key);
     if (package == null) {
       throw NotFoundException.resource('package "$packageName"');
     }
@@ -490,7 +496,7 @@ class PackageBackend {
     await requirePackageAdmin(packageName, user.userId);
     await requirePublisherAdmin(request.publisherId, user.userId);
     final rs = await withRetryTransaction(db, (tx) async {
-      final package = (await db.lookup<Package>([key])).single;
+      final package = await db.lookupValue<Package>(key);
       final fromPublisherId = package.publisherId;
       package.publisherId = request.publisherId;
       package.uploaders.clear();
@@ -583,8 +589,7 @@ class PackageBackend {
     if (!await isPackageVisible(package)) {
       throw NotFoundException.resource('package "$package"');
     }
-    final pv = await db.lookupValue<PackageVersion>(packageVersionKey,
-        orElse: () => null);
+    final pv = await db.lookupOrNull<PackageVersion>(packageVersionKey);
     if (pv == null) {
       throw NotFoundException.resource('version "$version"');
     }
@@ -605,8 +610,8 @@ class PackageBackend {
   Stream<List<int>> download(String package, String version) {
     // TODO: Should we first test for existence?
     // Maybe with a cache?
-    version = canonicalizeVersion(version);
-    return _storage.download(package, version);
+    final cv = canonicalizeVersion(version);
+    return _storage.download(package, cv!);
   }
 
   @visibleForTesting
@@ -661,7 +666,7 @@ class PackageBackend {
       if (info?.length == null) {
         throw PackageRejectedException.archiveEmpty();
       }
-      if (info.length > UploadSignerService.maxUploadSize) {
+      if (info!.length > UploadSignerService.maxUploadSize) {
         throw PackageRejectedException.archiveTooLarge(
             UploadSignerService.maxUploadSize);
       }
@@ -676,7 +681,7 @@ class PackageBackend {
         throw PackageRejectedException(archive.issues.first.message);
       }
 
-      final pubspec = Pubspec.fromYaml(archive.pubspecContent);
+      final pubspec = Pubspec.fromYaml(archive.pubspecContent!);
       PackageRejectedException.check(await nameTracker.accept(pubspec.name),
           'Package name is too similar to another active or moderated package.');
       final versionString = canonicalizeVersion(pubspec.nonCanonicalVersion);
@@ -716,9 +721,9 @@ class PackageBackend {
 
     final currentDartSdk = await getDartSdkVersion();
 
-    Package package;
-    String prevLatestStableVersion;
-    String prevLatestPrereleaseVersion;
+    Package? package;
+    String? prevLatestStableVersion;
+    String? prevLatestPrereleaseVersion;
 
     // Add the new package to the repository by storing the tarball and
     // inserting metadata to datastore (which happens atomically).
@@ -726,8 +731,8 @@ class PackageBackend {
       _logger.info('Starting datastore transaction.');
 
       final tuple = (await tx.lookup([newVersion.key, newVersion.packageKey]));
-      final version = tuple[0] as PackageVersion;
-      package = tuple[1] as Package;
+      final version = tuple[0] as PackageVersion?;
+      package = tuple[1] as Package?;
 
       // If the version already exists, we fail.
       if (version != null) {
@@ -753,33 +758,33 @@ class PackageBackend {
           throw PackageRejectedException.uploadRestricted();
         }
         package = Package.fromVersion(newVersion);
-      } else if (!await packageBackend.isPackageAdmin(package, user.userId)) {
+      } else if (!await packageBackend.isPackageAdmin(package!, user.userId)) {
         _logger.info('User ${user.userId} (${user.email}) is not an uploader '
-            'for package ${package.name}, rolling transaction back.');
+            'for package ${package!.name}, rolling transaction back.');
         throw AuthorizationException.userCannotUploadNewVersion(
-            user.email, package.name);
+            user.email, package!.name);
       }
 
-      if (package.isNotVisible) {
+      if (package!.isNotVisible) {
         throw PackageRejectedException.isWithheld();
       }
 
       // Store the publisher of the package at the time of the upload.
-      newVersion.publisherId = package.publisherId;
+      newVersion.publisherId = package!.publisherId;
 
       // Keep the latest version in the package object up-to-date.
-      package.updateVersion(newVersion,
+      package!.updateVersion(newVersion,
           dartSdkVersion: currentDartSdk.semanticVersion);
-      package.updated = DateTime.now().toUtc();
+      package!.updated = DateTime.now().toUtc();
 
       _logger.info(
-        'Trying to upload tarball for ${package.name} version ${newVersion.version} to cloud storage.',
+        'Trying to upload tarball for ${package!.name} version ${newVersion.version} to cloud storage.',
       );
       // Apply update: Push to cloud storage
-      await tarballUpload(package.name, newVersion.version);
+      await tarballUpload(package!.name, newVersion.version);
 
       final inserts = <Model>[
-        package,
+        package!,
         newVersion,
         entities.packageVersionInfo,
         ...entities.assets,
@@ -801,9 +806,9 @@ class PackageBackend {
     await purgePackageCache(newVersion.package);
 
     try {
-      final uploaderEmails = package.publisherId == null
-          ? await accountBackend.getEmailsOfUserIds(package.uploaders)
-          : await publisherBackend.getAdminMemberEmails(package.publisherId);
+      final uploaderEmails = package!.publisherId == null
+          ? await accountBackend.getEmailsOfUserIds(package!.uploaders)
+          : await publisherBackend.getAdminMemberEmails(package!.publisherId);
 
       // Notify uploaders via email that a new version has been published.
       final email = emailSender.sendMessage(createPackageUploadedEmail(
@@ -815,10 +820,10 @@ class PackageBackend {
       ));
 
       final latestVersionChanged = prevLatestStableVersion != null &&
-          package.latestVersion != prevLatestStableVersion;
+          package!.latestVersion != prevLatestStableVersion;
       final latestPrereleaseVersionChanged =
           prevLatestPrereleaseVersion != null &&
-              package.latestPrereleaseVersion != prevLatestPrereleaseVersion;
+              package!.latestPrereleaseVersion != prevLatestPrereleaseVersion;
       // Let's not block the upload response on these. In case of a timeout, the
       // underlying operations still go ahead, but the `Future.wait` call below
       // is not blocked on it.
@@ -853,16 +858,15 @@ class PackageBackend {
 
   Future<account_api.InviteStatus> inviteUploader(
       String packageName, api.InviteUploaderRequest invite) async {
-    InvalidInputException.checkNotNull(invite?.email, 'email');
+    InvalidInputException.checkNotNull(invite.email, 'email');
     final uploaderEmail = invite.email.toLowerCase();
     final user = await requireAuthenticatedUser();
     final packageKey = db.emptyKey.append(Package, id: packageName);
-    final package =
-        await db.lookupValue<Package>(packageKey, orElse: () => null);
+    final package = await db.lookupOrNull<Package>(packageKey);
 
     await _validatePackageUploader(packageName, package, user.userId);
     // Don't send invites for publisher-owned packages.
-    if (package.publisherId != null) {
+    if (package!.publisherId != null) {
       throw OperationForbiddenException.publisherOwnedPackageNoUploader(
           packageName, package.publisherId);
     }
@@ -873,7 +877,7 @@ class PackageBackend {
     final uploaderUsers =
         await accountBackend.lookupUsersById(package.uploaders);
     final isNotUploaderYet =
-        !uploaderUsers.any((u) => u.email == uploaderEmail);
+        !uploaderUsers.any((u) => u!.email == uploaderEmail);
     InvalidInputException.check(
         isNotUploaderYet, '`$uploaderEmail` is already an uploader.');
 
@@ -908,19 +912,18 @@ class PackageBackend {
     throw OperationForbiddenException.uploaderInviteSent(uploaderEmail);
   }
 
-  Future<void> confirmUploader(String fromUserId, String fromUserEmail,
+  Future<void> confirmUploader(String? fromUserId, String fromUserEmail,
       String packageName, User uploader) async {
     if (fromUserId == null) {
       final user =
           await accountBackend.lookupOrCreateUserByEmail(fromUserEmail);
       fromUserId = user.userId;
     }
-    assert(fromUserId != null);
     await withRetryTransaction(db, (tx) async {
       final packageKey = db.emptyKey.append(Package, id: packageName);
       final package = (await tx.lookup([packageKey])).first as Package;
 
-      await _validatePackageUploader(packageName, package, fromUserId);
+      await _validatePackageUploader(packageName, package, fromUserId!);
       if (package.containsUploader(uploader.userId)) {
         // The requested uploaderEmail is already part of the uploaders.
         return;
@@ -940,7 +943,7 @@ class PackageBackend {
   }
 
   Future<void> _validatePackageUploader(
-      String packageName, Package package, String userId) async {
+      String packageName, Package? package, String userId) async {
     // Fail if package doesn't exist.
     if (package == null) {
       throw NotFoundException.resource(packageName);
@@ -958,8 +961,7 @@ class PackageBackend {
     final user = await requireAuthenticatedUser();
     await withRetryTransaction(db, (tx) async {
       final packageKey = db.emptyKey.append(Package, id: packageName);
-      final package =
-          await tx.lookupValue<Package>(packageKey, orElse: () => null);
+      final package = await tx.lookupOrNull<Package>(packageKey);
       if (package == null) {
         throw NotFoundException.resource('package: $packageName');
       }
@@ -971,7 +973,7 @@ class PackageBackend {
           await accountBackend.lookupUsersById(package.uploaders);
       final uploadersWithEmail = <User>[];
       for (final u in uploaderUsers) {
-        final email = await accountBackend.getEmailOfUserId(u.userId);
+        final email = await accountBackend.getEmailOfUserId(u!.userId);
         if (email == uploaderEmail) uploadersWithEmail.add(u);
       }
       if (uploadersWithEmail.isEmpty) {
@@ -1037,7 +1039,7 @@ class PackagePage {
   final List<Package> packages;
   final bool isLast;
 
-  PackagePage({@required this.packages, @required this.isLast});
+  PackagePage({required this.packages, required this.isLast});
 }
 
 enum UploadRestrictionStatus {
@@ -1056,7 +1058,7 @@ enum UploadRestrictionStatus {
 ///
 /// Throws AuthenticationException if the user is provided.
 /// Throws AuthorizationException if the user is not an admin for the package.
-Future<Package> requirePackageAdmin(String package, String userId) async {
+Future<Package> requirePackageAdmin(String package, String? userId) async {
   if (userId == null) {
     throw AuthenticationException.authenticationRequired();
   }
@@ -1090,8 +1092,8 @@ Future<void> purgePackageCache(String package) async {
 
 /// The status of an invite after being created or updated.
 class InviteStatus {
-  final String urlNonce;
-  final DateTime nextNotification;
+  final String? urlNonce;
+  final DateTime? nextNotification;
 
   InviteStatus({this.urlNonce, this.nextNotification});
 
@@ -1154,7 +1156,7 @@ class DerivedPackageVersionEntities {
 /// Creates entities from [archive] summary.
 Future<_UploadEntities> _createUploadEntities(
     DatastoreDB db, User user, PackageSummary archive) async {
-  final pubspec = Pubspec.fromYaml(archive.pubspecContent);
+  final pubspec = Pubspec.fromYaml(archive.pubspecContent!);
   final packageKey = db.emptyKey.append(Package, id: pubspec.name);
   final versionString = canonicalizeVersion(pubspec.nonCanonicalVersion);
 
@@ -1179,14 +1181,14 @@ Future<_UploadEntities> _createUploadEntities(
 
 /// Creates new Datastore entities from the actual extraction of package [archive].
 DerivedPackageVersionEntities derivePackageVersionEntities({
-  @required PackageSummary archive,
-  @required DateTime versionCreated,
+  required PackageSummary archive,
+  required DateTime versionCreated,
 }) {
-  final pubspec = Pubspec.fromYaml(archive.pubspecContent);
+  final pubspec = Pubspec.fromYaml(archive.pubspecContent!);
   final key = QualifiedVersionKey(
       package: pubspec.name, version: pubspec.canonicalVersion);
 
-  String capContent(String text) {
+  String? capContent(String? text) {
     if (text == null) return text;
     if (text.length < maxAssetContentLength) return text;
     return text.substring(0, maxAssetContentLength);
@@ -1244,7 +1246,7 @@ DerivedPackageVersionEntities derivePackageVersionEntities({
     ..versionCreated = versionCreated
     ..updated = DateTime.now().toUtc()
     ..libraries = archive.libraries
-    ..libraryCount = archive.libraries.length
+    ..libraryCount = archive.libraries!.length
     ..assets = assets.map((a) => a.kind).toList()
     ..assetCount = assets.length;
 
@@ -1283,12 +1285,12 @@ class TarballStorage {
     // Change the ACL to include a `public-read` entry.
     final ObjectInfo info = await bucket.info(object);
     final publicRead = AclEntry(AllUsersScope(), AclPermission.READ);
-    final acl = Acl(List.from(info.metadata.acl.entries)..add(publicRead));
+    final acl = Acl(List.from(info.metadata.acl!.entries)..add(publicRead));
     await bucket.updateMetadata(object, info.metadata.replace(acl: acl));
   }
 
   /// Remove a previously generated temporary object.
-  Future<void> removeTempObject(String guid) async {
+  Future<void> removeTempObject(String? guid) async {
     if (guid == null) throw ArgumentError('No guid given.');
     return bucket.delete(namer.tmpObjectName(guid));
   }
@@ -1346,7 +1348,7 @@ class TarballStorageNamer {
   /// The prefix of where packages are stored (i.e. '' or 'ns/<namespace>').
   final String prefix;
 
-  TarballStorageNamer(String storageBaseUrl, this.bucket, String namespace)
+  TarballStorageNamer(String storageBaseUrl, this.bucket, String? namespace)
       : storageBaseUrl = storageBaseUrl.endsWith('/')
             ? storageBaseUrl.substring(0, storageBaseUrl.length - 1)
             : storageBaseUrl,
@@ -1369,7 +1371,7 @@ class TarballStorageNamer {
 }
 
 /// Verify that the [package] and the optional [version] parameter looks as acceptable input.
-void checkPackageVersionParams(String package, [String version]) {
+void checkPackageVersionParams(String package, [String? version]) {
   InvalidInputException.checkNotNull(package, 'package');
   InvalidInputException.check(
       package.trim() == package, 'Invalid package name.');

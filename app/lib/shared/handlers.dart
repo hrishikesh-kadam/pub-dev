@@ -123,15 +123,16 @@ shelf.Response debugResponse([Map<String, dynamic>? data]) {
   if (data != null) {
     map.addAll(data);
   }
-    map['popularity'] = {
-      'fetched': popularityStorage.lastFetched?.toIso8601String(),
-      'count': popularityStorage.count,
-      'dateRange': popularityStorage.dateRange,
-    };
+  map['popularity'] = {
+    'fetched': popularityStorage.lastFetched?.toIso8601String(),
+    'count': popularityStorage.count,
+    'dateRange': popularityStorage.dateRange,
+  };
   return jsonResponse(map, indentJson: true);
 }
 
-bool isNotModified(shelf.Request request, DateTime? lastModified, String? etag) {
+bool isNotModified(
+    shelf.Request request, DateTime? lastModified, String? etag) {
   DateTime? ifModifiedSince;
   try {
     ifModifiedSince = request.ifModifiedSince;

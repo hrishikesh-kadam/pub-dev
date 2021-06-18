@@ -159,10 +159,10 @@ class InvalidInputException extends ResponseException {
     _check(_ulidPattern.hasMatch(value), () => '"$name" is not a valid ulid.');
   }
 
-  static void checkSemanticVersion(String version) {
+  static void checkSemanticVersion(String? version) {
     checkNotNull(version, 'version');
     try {
-      Version.parse(version);
+      Version.parse(version!);
     } on FormatException catch (_) {
       throw InvalidInputException._(
           'Version string "$version" is not a valid semantic version.');
