@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
@@ -17,6 +19,7 @@ import '../analyzer/analyzer_client.dart';
 import '../dartdoc/dartdoc_client.dart';
 import '../package/backend.dart';
 import '../package/model_properties.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../package/models.dart';
 import '../package/overrides.dart';
 import '../shared/datastore.dart';
@@ -25,7 +28,9 @@ import '../shared/popularity_storage.dart';
 import '../shared/storage.dart';
 import '../shared/tags.dart';
 
+// ignore: import_of_legacy_library_into_null_safe
 import 'models.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import 'search_service.dart';
 import 'text_utils.dart';
 
@@ -93,7 +98,7 @@ class SearchBackend {
       prv?.getTags()?.forEach(tags.add);
 
       final pra = await analyzerClient.getAnalysisView(packageName, version);
-      pra?.derivedTags?.forEach(tags.add);
+      pra.derivedTags.forEach(tags.add);
       return tags;
     }
 
@@ -124,7 +129,7 @@ class SearchBackend {
         packageName, 'latest', 'pub-data.json',
         timeout: const Duration(minutes: 1));
 
-    List<ApiDocPage> apiDocPages;
+    List<ApiDocPage>? apiDocPages;
     try {
       if (pubDataContent == null || pubDataContent.isEmpty) {
         _logger.info('Got empty pub-data.json for package $packageName.');
@@ -135,7 +140,7 @@ class SearchBackend {
       _logger.severe('Parsing pub-data.json failed.', e, st);
     }
 
-    final double popularity = popularityStorage.lookup(packageName) ?? 0.0;
+    final popularity = popularityStorage.lookup(packageName);
 
     return PackageDocument(
       package: pv.package,
@@ -147,7 +152,7 @@ class SearchBackend {
       readme: compactReadme(readmeAsset?.textContent),
       popularity: popularity,
       likeCount: p.likes,
-      grantedPoints: analysisView.report?.grantedPoints ?? 0,
+      grantedPoints: analysisView.report?.grantedPoints,
       maxPoints: analysisView.report?.maxPoints ?? 0,
       dependencies: _buildDependencies(pv.pubspec, analysisView),
       publisherId: p.publisherId,
@@ -177,7 +182,7 @@ class SearchBackend {
     }
     final uploaders = await accountBackend.getEmailsOfUserIds(p.uploaders);
     uploaders.sort();
-    return uploaders;
+    return uploaders.cast<String>();
   }
 
   List<ApiDocPage> _apiDocPagesFromPubDataText(String text) {
@@ -191,7 +196,7 @@ class SearchBackend {
     final query = _db.query<Package>();
     await for (final p in query.run()) {
       final releases = await packageBackend.latestReleases(p);
-      final popularity = popularityStorage.lookup(p.name) ?? 0.0;
+      final popularity = popularityStorage.lookup(p.name);
       yield PackageDocument(
         package: p.name,
         version: releases.stable.version,
@@ -213,17 +218,17 @@ class SearchBackend {
 /// Creates the index-related API data structure from the extracted dartdoc data.
 List<ApiDocPage> apiDocPagesFromPubData(PubDartdocData pubData) {
   final nameToKindMap = <String, String>{};
-  pubData.apiElements.forEach((e) {
+  pubData.apiElements!.forEach((e) {
     nameToKindMap[e.qualifiedName] = e.kind;
   });
 
-  final pathMap = <String, String>{};
+  final pathMap = <String, String?>{};
   final symbolMap = <String, Set<String>>{};
   final docMap = <String, List<String>>{};
 
-  bool isTopLevel(String kind) => kind == 'library' || kind == 'class';
+  bool isTopLevel(String? kind) => kind == 'library' || kind == 'class';
 
-  void update(String key, String symbol, String documentation) {
+  void update(String key, String symbol, String? documentation) {
     final set = symbolMap.putIfAbsent(key, () => <String>{});
     set.add(symbol);
 
@@ -234,7 +239,7 @@ List<ApiDocPage> apiDocPagesFromPubData(PubDartdocData pubData) {
     }
   }
 
-  pubData.apiElements.forEach((apiElement) {
+  pubData.apiElements!.forEach((apiElement) {
     if (isTopLevel(apiElement.kind)) {
       pathMap[apiElement.qualifiedName] = apiElement.href;
       update(
@@ -244,13 +249,13 @@ List<ApiDocPage> apiDocPagesFromPubData(PubDartdocData pubData) {
     if (!isTopLevel(apiElement.kind) &&
         apiElement.parent != null &&
         isTopLevel(nameToKindMap[apiElement.parent])) {
-      update(apiElement.parent, apiElement.name, apiElement.documentation);
+      update(apiElement.parent!, apiElement.name, apiElement.documentation);
     }
   });
 
   final results = pathMap.keys.map((key) {
     final path = pathMap[key];
-    final symbols = symbolMap[key].toList()..sort();
+    final symbols = symbolMap[key]!.toList()..sort();
     return ApiDocPage(
       relativePath: path,
       symbols: symbols,
@@ -263,20 +268,20 @@ List<ApiDocPage> apiDocPagesFromPubData(PubDartdocData pubData) {
 
 class SnapshotStorage {
   final VersionedJsonStorage _storage;
-  SearchSnapshot _snapshot;
-  Timer _snapshotWriteTimer;
+  SearchSnapshot? _snapshot;
+  Timer? _snapshotWriteTimer;
 
   SnapshotStorage(Bucket bucket)
       : _storage = VersionedJsonStorage(bucket, 'snapshot/');
 
-  Map<String, PackageDocument> get documents => _snapshot.documents;
+  Map<String, PackageDocument> get documents => _snapshot!.documents!;
 
   void add(PackageDocument doc) {
-    _snapshot.add(doc);
+    _snapshot!.add(doc);
   }
 
   void remove(String package) {
-    _snapshot.remove(package);
+    _snapshot!.remove(package);
   }
 
   void startTimer() {
@@ -294,10 +299,11 @@ class SnapshotStorage {
     try {
       final map = await _storage.getContentAsJsonMap(version);
       _snapshot = SearchSnapshot.fromJson(map);
-      _snapshot.documents
+      _snapshot!.documents
           .removeWhere((packageName, doc) => isSoftRemoved(packageName));
-      final count = _snapshot.documents.length;
-      _logger.info('Got $count packages from snapshot at ${_snapshot.updated}');
+      final count = _snapshot!.documents.length;
+      _logger
+          .info('Got $count packages from snapshot at ${_snapshot!.updated}');
     } catch (e, st) {
       final uri = _storage.getBucketUri(version);
       _logger.shout('Unable to load search snapshot: $uri', e, st);
@@ -322,7 +328,7 @@ class SnapshotStorage {
         _logger.info('Snapshot update skipped (found recent snapshot).');
       } else {
         _logger.info('Updating search snapshot...');
-        await _storage.uploadDataAsJsonMap(_snapshot.toJson());
+        await _storage.uploadDataAsJsonMap(_snapshot!.toJson());
         _logger.info('Search snapshot update completed.');
       }
     } catch (e, st) {

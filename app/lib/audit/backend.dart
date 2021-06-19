@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'package:gcloud/service_scope.dart' as ss;
 
 import '../shared/datastore.dart';
@@ -26,7 +28,7 @@ class AuditBackend {
   Future<List<AuditLogRecord>> listRecordsForPackage(String package) async {
     final query = _db.query<AuditLogRecord>()..filter('packages =', package);
     final records = await query.run().where((r) => r.isNotExpired).toList();
-    records.sort((a, b) => -a.created.compareTo(b.created));
+    records.sort((a, b) => -a.created!.compareTo(b.created!));
     return records;
   }
 
@@ -39,7 +41,7 @@ class AuditBackend {
     final query = _db.query<AuditLogRecord>()
       ..filter('packageVersions =', '$package/$version');
     final records = await query.run().where((r) => r.isNotExpired).toList();
-    records.sort((a, b) => -a.created.compareTo(b.created));
+    records.sort((a, b) => -a.created!.compareTo(b.created!));
     return records;
   }
 
@@ -51,7 +53,7 @@ class AuditBackend {
     final query = _db.query<AuditLogRecord>()
       ..filter('publishers =', publisherId);
     final records = await query.run().where((r) => r.isNotExpired).toList();
-    records.sort((a, b) => -a.created.compareTo(b.created));
+    records.sort((a, b) => -a.created!.compareTo(b.created!));
     return records;
   }
 

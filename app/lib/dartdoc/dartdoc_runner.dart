@@ -2,12 +2,13 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:async';
 import 'dart:convert' as convert;
 import 'dart:io';
 
 import 'package:logging/logging.dart';
-import 'package:meta/meta.dart';
 import 'package:pana/pana.dart' hide Pubspec, ReportStatus;
 import 'package:path/path.dart' as p;
 
@@ -18,9 +19,12 @@ import '../frontend/static_files.dart';
 import '../job/backend.dart';
 import '../job/job.dart';
 import '../package/backend.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../package/models.dart';
 import '../scorecard/backend.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../scorecard/models.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../shared/configuration.dart';
 import '../shared/env_config.dart';
 import '../shared/tool_env.dart';
@@ -31,6 +35,7 @@ import '../shared/versions.dart' as versions;
 import 'backend.dart';
 import 'customization.dart';
 import 'dartdoc_options.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import 'models.dart';
 
 final Logger _logger = Logger('pub.dartdoc.runner');
@@ -46,26 +51,26 @@ final Duration _twoYears = const Duration(days: 2 * 365);
 /// Generic interface to run dartdoc for SDK- and package-documentation.
 abstract class DartdocRunner {
   Future<void> downloadAndExtract({
-    @required String package,
-    @required String version,
-    @required String destination,
+    required String package,
+    required String version,
+    required String destination,
   });
 
   Future<ProcessResult> runPubUpgrade({
-    @required ToolEnvironment toolEnv,
-    @required String pkgPath,
-    @required bool usesFlutter,
+    required ToolEnvironment toolEnv,
+    required String pkgPath,
+    required bool usesFlutter,
   });
 
   Future<DartdocRunnerResult> generatePackageDocs({
-    @required String package,
-    @required String version,
-    @required String pkgPath,
-    @required String canonicalUrl,
-    @required bool usesPreviewSdk,
-    @required ToolEnvironment toolEnv,
-    @required bool useLongerTimeout,
-    @required String outputDir,
+    required String package,
+    required String version,
+    required String pkgPath,
+    required String canonicalUrl,
+    required bool usesPreviewSdk,
+    required ToolEnvironment toolEnv,
+    required bool useLongerTimeout,
+    required String outputDir,
   });
 }
 
@@ -74,8 +79,8 @@ class DartdocRunnerResult {
   final ProcessResult processResult;
 
   DartdocRunnerResult({
-    @required this.args,
-    @required this.processResult,
+    required this.args,
+    required this.processResult,
   });
 }
 
@@ -93,9 +98,9 @@ class _DartdocRunner implements DartdocRunner {
 
   @override
   Future<void> downloadAndExtract({
-    @required String package,
-    @required String version,
-    @required String destination,
+    required String package,
+    required String version,
+    required String destination,
   }) async {
     await downloadPackage(
       package,
@@ -107,23 +112,23 @@ class _DartdocRunner implements DartdocRunner {
 
   @override
   Future<ProcessResult> runPubUpgrade({
-    @required ToolEnvironment toolEnv,
-    @required String pkgPath,
-    @required bool usesFlutter,
+    required ToolEnvironment toolEnv,
+    required String pkgPath,
+    required bool usesFlutter,
   }) async {
     return await toolEnv.runUpgrade(pkgPath, usesFlutter);
   }
 
   @override
   Future<DartdocRunnerResult> generatePackageDocs({
-    @required String package,
-    @required String version,
-    @required String pkgPath,
-    @required String canonicalUrl,
-    @required bool usesPreviewSdk,
-    @required ToolEnvironment toolEnv,
-    @required bool useLongerTimeout,
-    @required String outputDir,
+    required String package,
+    required String version,
+    required String pkgPath,
+    required String canonicalUrl,
+    required bool usesPreviewSdk,
+    required ToolEnvironment toolEnv,
+    required bool useLongerTimeout,
+    required String outputDir,
   }) async {
     await _initializeIfNeeded();
     final args = [
@@ -136,7 +141,7 @@ class _DartdocRunner implements DartdocRunner {
       '--no-validate-links',
     ];
     if (toolEnv.dartSdkDir != null) {
-      args.addAll(['--sdk-dir', toolEnv.dartSdkDir]);
+      args.addAll(['--sdk-dir', toolEnv.dartSdkDir!]);
     }
     final flutterRoot = usesPreviewSdk
         ? envConfig.previewFlutterSdkDir
@@ -145,7 +150,7 @@ class _DartdocRunner implements DartdocRunner {
       'PUB_HOSTED_URL': activeConfiguration.primaryApiUri.toString(),
       if (flutterRoot != null) 'FLUTTER_ROOT': flutterRoot,
     };
-    final dartCmd = p.join(toolEnv.dartSdkDir, 'bin', 'dart');
+    final dartCmd = p.join(toolEnv.dartSdkDir!, 'bin', 'dart');
     final pr = await runProc(
       [dartCmd, 'bin/pub_dartdoc.dart', ...args],
       environment: environment,
@@ -160,8 +165,8 @@ class DartdocJobProcessor extends JobProcessor {
   final DartdocRunner _runner;
 
   DartdocJobProcessor({
-    DartdocRunner runner,
-    @required AliveCallback aliveCallback,
+    DartdocRunner? runner,
+    required AliveCallback? aliveCallback,
   })  : _runner = runner ?? _DartdocRunner(),
         super(
           service: JobService.dartdoc,
@@ -180,7 +185,7 @@ class DartdocJobProcessor extends JobProcessor {
   @override
   Future<JobStatus> process(Job job) async {
     final packageStatus = await scoreCardBackend.getPackageStatus(
-        job.packageName, job.packageVersion);
+        job.packageName!, job.packageVersion!);
     // In case the package was deleted between scheduling and the actual delete.
     if (!packageStatus.exists) {
       _logger.info('Package does not exist: $job.');
@@ -218,16 +223,16 @@ class DartdocJobProcessor extends JobProcessor {
     await Directory(pkgPath).create(recursive: true);
 
     final latestVersion =
-        await packageBackend.getLatestVersion(job.packageName);
+        await packageBackend.getLatestVersion(job.packageName!);
     final bool isLatestStable = latestVersion == job.packageVersion;
     bool depsResolved = false;
-    DartdocResult dartdocResult;
+    DartdocResult? dartdocResult;
     bool hasContent = false;
-    PubDartdocData dartdocData;
+    PubDartdocData? dartdocData;
 
     String reportStatus = ReportStatus.failed;
-    String abortMessage;
-    DartdocEntry entry;
+    String? abortMessage;
+    DartdocEntry? entry;
     try {
       await withToolEnv(
         usesPreviewSdk: packageStatus.usesPreviewSdk,
@@ -247,8 +252,8 @@ class DartdocJobProcessor extends JobProcessor {
               'started: ${DateTime.now().toUtc().toIso8601String()}\n\n');
 
           await _runner.downloadAndExtract(
-            package: job.packageName,
-            version: job.packageVersion,
+            package: job.packageName!,
+            version: job.packageVersion!,
             destination: pkgPath,
           );
 
@@ -269,7 +274,7 @@ class DartdocJobProcessor extends JobProcessor {
                 toolEnv, logger, job, pkgPath, outputDir, logFileOutput,
                 usesPreviewSdk: packageStatus.usesPreviewSdk);
             hasContent =
-                dartdocResult.hasIndexHtml && dartdocResult.hasIndexJson;
+                dartdocResult!.hasIndexHtml && dartdocResult!.hasIndexJson;
           } else {
             logFileOutput
                 .write('Dependencies were not resolved, skipping dartdoc.\n\n');
@@ -277,8 +282,8 @@ class DartdocJobProcessor extends JobProcessor {
 
           if (hasContent) {
             try {
-              await DartdocCustomizer(
-                      job.packageName, job.packageVersion, job.isLatestStable)
+              await DartdocCustomizer(job.packageName!, job.packageVersion!,
+                      job.isLatestStable!)
                   .customizeDir(outputDir);
               logFileOutput.write('Content customization completed.\n\n');
             } catch (e, st) {
@@ -295,28 +300,28 @@ class DartdocJobProcessor extends JobProcessor {
           entry = await _createEntry(toolEnv, job, outputDir, usesFlutter,
               depsResolved, hasContent, sw.elapsed);
           logFileOutput
-              .write('entry created: ${entry.uuid} in ${sw.elapsed}\n\n');
+              .write('entry created: ${entry!.uuid} in ${sw.elapsed}\n\n');
 
           logFileOutput
-              .write('completed: ${entry.timestamp.toIso8601String()}\n');
+              .write('completed: ${entry!.timestamp.toIso8601String()}\n');
           await _writeLog(outputDir, logFileOutput);
         },
       );
 
       final oldEntry =
-          await dartdocBackend.getEntry(job.packageName, job.packageVersion);
-      if (entry.isRegression(oldEntry)) {
+          await dartdocBackend.getEntry(job.packageName!, job.packageVersion!);
+      if (entry!.isRegression(oldEntry)) {
         logger.severe('Regression detected in $job, aborting upload.');
         // If `isLatest` has changed, we still want to update the old entry,
         // even if the job failed. `isLatest` is used to redirect latest
         // versions from versioned url to url with `/latest/`, and this
         // is cheaper than checking it on each request.
-        if (oldEntry.isLatest != entry.isLatest) {
+        if (oldEntry!.isLatest != entry!.isLatest) {
           await dartdocBackend.updateOldIsLatest(oldEntry,
-              isLatest: entry.isLatest);
+              isLatest: entry!.isLatest);
         }
       } else {
-        await dartdocBackend.uploadDir(entry, outputDir);
+        await dartdocBackend.uploadDir(entry!, outputDir);
         reportStatus = hasContent ? ReportStatus.success : ReportStatus.failed;
       }
 
@@ -344,16 +349,16 @@ class DartdocJobProcessor extends JobProcessor {
         total: coverage.total,
       );
     } else {
-      if (dartdocResult != null && dartdocResult.wasTimeout) {
+      if (dartdocResult != null && dartdocResult!.wasTimeout) {
         abortMessage ??= '`dartdoc` timed out.';
       }
       if (abortMessage == null && dartdocResult != null) {
         final output =
-            _mergeOutput(dartdocResult.processResult, compress: true);
+            _mergeOutput(dartdocResult!.processResult, compress: true);
         abortMessage = '`dartdoc` failed with:\n\n```\n$output\n```';
       }
       abortMessage ??= '`dartdoc` failed with unknown reason.';
-      documentationSection = dartdocFailedSection(abortMessage);
+      documentationSection = dartdocFailedSection(abortMessage!);
     }
     await _storeScoreCard(
         job,
@@ -373,11 +378,11 @@ class DartdocJobProcessor extends JobProcessor {
 
   Future _storeScoreCard(Job job, DartdocReport report) async {
     await scoreCardBackend.updateReportOnCard(
-        job.packageName, job.packageVersion,
+        job.packageName!, job.packageVersion!,
         dartdocReport: report);
   }
 
-  Future<String> _resolveDependencies(
+  Future<String?> _resolveDependencies(
       Logger logger,
       ToolEnvironment toolEnv,
       Job job,
@@ -389,7 +394,7 @@ class DartdocJobProcessor extends JobProcessor {
         toolEnv: toolEnv, pkgPath: pkgPath, usesFlutter: usesFlutter);
     _appendLog(logFileOutput, pr);
     if (pr.exitCode != 0) {
-      final message = pr.stderr.toString() ?? '';
+      final message = pr.stderr.toString();
       final isUserProblem = message.contains('version solving failed') ||
           message.contains('Git error.');
       final output = _mergeOutput(pr, compress: true);
@@ -408,16 +413,17 @@ class DartdocJobProcessor extends JobProcessor {
     String pkgPath,
     String outputDir,
     StringBuffer logFileOutput, {
-    @required bool usesPreviewSdk,
+    required bool usesPreviewSdk,
   }) async {
     logFileOutput.write('Running dartdoc:\n');
-    final canonicalVersion = job.isLatestStable ? 'latest' : job.packageVersion;
-    final canonicalUrl = pkgDocUrl(job.packageName,
+    final canonicalVersion =
+        job.isLatestStable! ? 'latest' : job.packageVersion;
+    final canonicalUrl = pkgDocUrl(job.packageName!,
         version: canonicalVersion, includeHost: true, omitTrailingSlash: true);
 
     // Create and/or customize dartdoc_options.yaml
     final optionsFile = File(p.join(pkgPath, 'dartdoc_options.yaml'));
-    Map<String, dynamic> originalContent;
+    Map<String, dynamic>? originalContent;
     if (await optionsFile.exists()) {
       final content = await optionsFile.readAsString();
       try {
@@ -433,8 +439,8 @@ class DartdocJobProcessor extends JobProcessor {
     /// hopefully to complete within the time limit and fewer issues.
     Future<DartdocResult> runDartdoc() async {
       final result = await _runner.generatePackageDocs(
-        package: job.packageName,
-        version: job.packageVersion,
+        package: job.packageName!,
+        version: job.packageVersion!,
         pkgPath: pkgPath,
         canonicalUrl: canonicalUrl,
         usesPreviewSdk: usesPreviewSdk,
@@ -488,8 +494,8 @@ class DartdocJobProcessor extends JobProcessor {
       bool depsResolved,
       bool hasContent,
       Duration runDuration) async {
-    int archiveSize;
-    int totalSize;
+    int? archiveSize;
+    int? totalSize;
     if (hasContent) {
       final archiveFile = File(p.join(outputDir, _archiveFilePath));
       archiveSize = await archiveFile.length();
@@ -498,12 +504,12 @@ class DartdocJobProcessor extends JobProcessor {
           .where((fse) => fse is File)
           .cast<File>()
           .asyncMap((file) => file.length())
-          .fold(0, (a, b) => a + b);
-      totalSize -= archiveSize;
+          .fold<int>(0, (a, b) => a + b);
+      totalSize = totalSize - archiveSize;
     }
     final now = DateTime.now();
     final isObsolete = job.isLatestStable == false &&
-        job.packageVersionUpdated.difference(now).abs() > _twoYears;
+        job.packageVersionUpdated!.difference(now).abs() > _twoYears;
     final entry = DartdocEntry(
       uuid: createUuid(),
       packageName: job.packageName,
@@ -514,9 +520,7 @@ class DartdocJobProcessor extends JobProcessor {
       runtimeVersion: versions.runtimeVersion,
       sdkVersion: toolEnv.runtimeInfo.sdkVersion,
       dartdocVersion: versions.dartdocVersion,
-      flutterVersion: toolEnv.runtimeInfo.flutterVersions == null
-          ? null
-          : toolEnv.runtimeInfo.flutterVersions['frameworkVersion'] as String,
+      flutterVersion: toolEnv.runtimeInfo.flutterVersion,
       timestamp: DateTime.now().toUtc(),
       runDuration: runDuration,
       depsResolved: depsResolved,
@@ -572,7 +576,7 @@ class DartdocJobProcessor extends JobProcessor {
     logFileOutput.write('Created package archive in ${sw.elapsed}.\n');
   }
 
-  Future<PubDartdocData> _loadPubDartdocData(
+  Future<PubDartdocData?> _loadPubDartdocData(
       Logger logger, String outputDir) async {
     final file = File(p.join(outputDir, _pubDataFileName));
     if (!file.existsSync()) {

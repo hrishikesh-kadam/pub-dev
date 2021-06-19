@@ -2,14 +2,16 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:gcloud/service_scope.dart' as ss;
 import 'package:logging/logging.dart';
-import 'package:meta/meta.dart';
 
 import '../package/backend.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../package/models.dart';
 import '../shared/datastore.dart' as db;
 import '../shared/popularity_storage.dart';
@@ -57,14 +59,13 @@ class JobBackend {
   Future<void> trigger(
     JobService service,
     String package, {
-    String version,
-    DateTime updated,
-    bool shouldProcess,
+    String? version,
+    DateTime? updated,
+    bool? shouldProcess,
     bool isHighPriority = false,
   }) async {
     final pKey = _db.emptyKey.append(Package, id: package);
-    final pList = await _db.lookup([pKey]);
-    final p = pList[0] as Package;
+    final p = await _db.lookupOrNull<Package>(pKey);
     if (p == null || p.isNotVisible) {
       _logger.info("Couldn't trigger $service job: $package not found.");
       return;
@@ -73,8 +74,7 @@ class JobBackend {
 
     version ??= latestReleases.stable.version;
     final pvKey = pKey.append(PackageVersion, id: version);
-    final list = await _db.lookup([pvKey]);
-    final pv = list[0] as PackageVersion;
+    final pv = await _db.lookupOrNull<PackageVersion>(pvKey);
     if (pv == null) {
       _logger
           .info("Couldn't trigger $service job: $package $version not found.");
@@ -102,15 +102,15 @@ class JobBackend {
   }
 
   Future<void> createOrUpdate({
-    @required JobService service,
-    @required String package,
-    @required String version,
-    @required bool isLatestStable,
-    @required bool isLatestPrerelease,
-    @required bool isLatestPreview,
-    @required DateTime packageVersionUpdated,
-    @required bool shouldProcess,
-    int priority,
+    required JobService service,
+    required String package,
+    required String version,
+    required bool isLatestStable,
+    required bool isLatestPrerelease,
+    required bool isLatestPreview,
+    required DateTime? packageVersionUpdated,
+    required bool shouldProcess,
+    int? priority,
   }) async {
     packageVersionUpdated ??= DateTime.now().toUtc();
     final id = _id(service, package, version);
@@ -118,14 +118,13 @@ class JobBackend {
     final lockedUntil =
         shouldProcess ? null : DateTime.now().add(_shortExtendDuration);
     await db.withRetryTransaction(_db, (tx) async {
-      final current = await tx.lookupValue<Job>(
-          _db.emptyKey.append(Job, id: id),
-          orElse: () => null);
+      final current =
+          await tx.lookupOrNull<Job>(_db.emptyKey.append(Job, id: id));
       if (current != null) {
         final hasNotChanged = current.isLatestStable == isLatestStable &&
             current.isLatestPrerelease == isLatestPrerelease &&
             current.isLatestPreview == isLatestPreview &&
-            !current.packageVersionUpdated.isBefore(packageVersionUpdated) &&
+            !current.packageVersionUpdated!.isBefore(packageVersionUpdated!) &&
             (priority == null || current.priority <= priority);
         if (hasNotChanged && !shouldProcess) {
           // no reason to re-schedule the job
@@ -177,8 +176,8 @@ class JobBackend {
     });
   }
 
-  Future<Job> lockAvailable(JobService service) async {
-    bool isApplicable(Job job) {
+  Future<Job?> lockAvailable(JobService service) async {
+    bool isApplicable(Job? job) {
       if (job == null) return false;
       if (job.state != JobState.available) return false;
       if (job.runtimeVersion != versions.runtimeVersion) return false;
@@ -202,15 +201,14 @@ class JobBackend {
       final selectedId = pool.select().id;
 
       final job = await db.withRetryTransaction(_db, (tx) async {
-        final selected = await tx.lookupValue<Job>(
-            _db.emptyKey.append(Job, id: selectedId),
-            orElse: () => null);
+        final selected = await tx
+            .lookupOrNull<Job>(_db.emptyKey.append(Job, id: selectedId));
         if (!isApplicable(selected)) {
           pool.markRace();
           return null;
         }
         final now = DateTime.now().toUtc();
-        selected
+        selected!
           ..state = JobState.processing
           ..processingKey = createUuid()
           ..lockedUntil = now.add(_defaultLockDuration);
@@ -235,7 +233,7 @@ class JobBackend {
             ..errorCount = errorCount
             ..lastStatus = JobStatus.aborted
             ..lockedUntil = _extendLock(errorCount)
-            ..updatePriority(popularityStorage.lookup(job.packageName));
+            ..updatePriority(popularityStorage.lookup(job.packageName!));
           tx.insert(current);
         }
       });
@@ -293,8 +291,8 @@ class JobBackend {
       if (job.runtimeVersion != versions.runtimeVersion) continue;
       try {
         final pv = await packageBackend.lookupPackageVersion(
-            job.packageName, job.packageVersion);
-        final process = await shouldProcess(pv, job.packageVersionUpdated);
+            job.packageName!, job.packageVersion!);
+        final process = await shouldProcess(pv!, job.packageVersionUpdated!);
         if (process) {
           await _schedule(job);
         } else {
@@ -308,9 +306,8 @@ class JobBackend {
 
   Future<void> complete(Job job, JobStatus status, Duration runDuration) async {
     await db.withRetryTransaction(_db, (tx) async {
-      final selected = await tx.lookupValue<Job>(
-          _db.emptyKey.append(Job, id: job.id),
-          orElse: () => null);
+      final selected =
+          await tx.lookupOrNull<Job>(_db.emptyKey.append(Job, id: job.id));
       if (selected == null) {
         _logger.info('Unable to complete missing job: $job.');
         return;
@@ -328,11 +325,10 @@ class JobBackend {
           ..processingKey = null
           ..errorCount = errorCount
           ..lockedUntil = _extendLock(errorCount)
-          ..updatePriority(popularityStorage.lookup(selected.packageName));
+          ..updatePriority(popularityStorage.lookup(selected.packageName!));
         tx.insert(selected);
       } else {
-        _logger
-            .info('Job $job completion aborted. isNull: ${selected == null}');
+        _logger.info('Job $job completion aborted.');
       }
     });
   }
@@ -446,15 +442,15 @@ class _Stat {
     if (job.state == JobState.available) {
       _availableCount++;
     }
-    final stateKey = jobStateAsString(job.state);
-    final statusKey = jobStatusAsString(job.lastStatus);
+    final stateKey = jobStateAsString(job.state!);
+    final statusKey = jobStatusAsString(job.lastStatus!);
     _stateMap[stateKey] = (_stateMap[stateKey] ?? 0) + 1;
     _statusMap[statusKey] = (_statusMap[statusKey] ?? 0) + 1;
 
     final bool isError = job.lastStatus == JobStatus.failed ||
         job.lastStatus == JobStatus.aborted;
     if (_collectFailed && isError) {
-      _failedPackages.add(job.packageName);
+      _failedPackages.add(job.packageName!);
     }
   }
 
@@ -476,20 +472,20 @@ class _AllStats {
   final _Stat all = _Stat();
   final _Stat latest = _Stat();
   final _Stat last90 = _Stat(collectFailed: true);
-  String _estimate;
+  String? _estimate;
 
   void add(Job job) {
     all.add(job);
-    if (job.isLatestStable) {
+    if (job.isLatestStable!) {
       latest.add(job);
     }
-    final age = timestamp.difference(job.packageVersionUpdated).abs();
+    final age = timestamp.difference(job.packageVersionUpdated!).abs();
     if (age.inDays <= 90) {
       last90.add(job);
     }
   }
 
-  void updateEstimates(_AllStats prev) {
+  void updateEstimates(_AllStats? prev) {
     if (prev == null) {
       _estimate = 'no estimate yet';
       return;

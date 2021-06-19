@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 /// Returns a new, pub-specific dartdoc options based on [original].
 ///
 /// dartdoc_options.yaml allows to change how doc content is generated.
@@ -13,7 +15,7 @@
 ///
 /// Discussion on the enabled options:
 /// https://github.com/dart-lang/pub-dev/issues/4521#issuecomment-779821098
-Map<String, dynamic> customizeDartdocOptions(Map<String, dynamic> original) {
+Map<String, dynamic> customizeDartdocOptions(Map<String, dynamic>? original) {
   final passThroughOptions = <String, dynamic>{};
   if (original != null &&
       original.containsKey('dartdoc') &&

@@ -185,7 +185,8 @@ class GoogleOauth2AuthProvider extends AuthProvider {
   }
 
   @override
-  Future<AccountProfile> getAccountProfile(String accessToken) async {
+  Future<AccountProfile?> getAccountProfile(String? accessToken) async {
+    if (accessToken == null) return null;
     final client = httpRetryClient(innerClient: http.Client());
     final authClient = auth.authenticatedClient(
         client,

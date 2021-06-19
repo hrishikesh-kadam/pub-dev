@@ -461,7 +461,7 @@ class AccountBackend {
   ///
   /// Returns `null` if the session does not exists or any issue is present
   Future<UserSessionData?> parseAndLookupSessionCookie(
-      String cookieString) async {
+      String? cookieString) async {
     try {
       final sessionId = session_cookie.parseSessionCookie(cookieString);
       if (sessionId != null && sessionId.isNotEmpty) {

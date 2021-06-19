@@ -2,11 +2,12 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:meta/meta.dart';
 import 'package:pana/pana.dart' show ToolEnvironment;
 import 'package:path/path.dart' as p;
 import 'package:pub_dartdoc_data/pub_dartdoc_data.dart';
@@ -29,18 +30,18 @@ Future<void> processJobsWithFakeDartdocRunner() async {
 class FakeDartdocRunner implements DartdocRunner {
   @override
   Future<void> downloadAndExtract({
-    @required String package,
-    @required String version,
-    @required String destination,
+    required String package,
+    required String version,
+    required String destination,
   }) async {
     // no-op
   }
 
   @override
   Future<ProcessResult> runPubUpgrade({
-    @required ToolEnvironment toolEnv,
-    @required String pkgPath,
-    @required bool usesFlutter,
+    required ToolEnvironment toolEnv,
+    required String pkgPath,
+    required bool usesFlutter,
   }) async {
     // no-op
     return ProcessResult(0, 0, 'OK', '');
@@ -48,14 +49,14 @@ class FakeDartdocRunner implements DartdocRunner {
 
   @override
   Future<DartdocRunnerResult> generatePackageDocs({
-    @required String package,
-    @required String version,
-    @required String pkgPath,
-    @required String canonicalUrl,
-    @required bool usesPreviewSdk,
-    @required ToolEnvironment toolEnv,
-    @required bool useLongerTimeout,
-    @required String outputDir,
+    required String package,
+    required String version,
+    required String pkgPath,
+    required String canonicalUrl,
+    required bool usesPreviewSdk,
+    required ToolEnvironment toolEnv,
+    required bool useLongerTimeout,
+    required String outputDir,
   }) async {
     final random = Random('$package/$version'.hashCode);
 

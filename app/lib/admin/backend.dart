@@ -2,9 +2,12 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:convert';
 
 import 'package:client_data/admin_api.dart' as api;
+import 'package:collection/collection.dart';
 import 'package:convert/convert.dart';
 import 'package:gcloud/service_scope.dart' as ss;
 import 'package:gcloud/storage.dart';
@@ -13,14 +16,19 @@ import 'package:pool/pool.dart';
 import 'package:pub_semver/pub_semver.dart';
 
 import '../account/backend.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../account/models.dart';
 import '../dartdoc/backend.dart';
 import '../job/model.dart';
 import '../package/backend.dart'
     show TarballStorage, checkPackageVersionParams, packageBackend;
+// ignore: import_of_legacy_library_into_null_safe
 import '../package/models.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../publisher/models.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../scorecard/models.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../shared/configuration.dart';
 import '../shared/datastore.dart';
 import '../shared/exceptions.dart';
@@ -48,9 +56,8 @@ class AdminBackend {
     ArgumentError.checkNotNull(permission, 'permission');
 
     final user = await requireAuthenticatedUser();
-    final admin = activeConfiguration.admins.firstWhere(
-        (a) => a.oauthUserId == user.oauthUserId && a.email == user.email,
-        orElse: () => null);
+    final admin = activeConfiguration.admins.firstWhereOrNull(
+        (a) => a.oauthUserId == user.oauthUserId && a.email == user.email);
     if (admin == null || !admin.permissions.contains(permission)) {
       _logger.warning(
           'User (${user.userId} / ${user.email}) is trying to access unauthorized admin APIs.');
@@ -63,9 +70,9 @@ class AdminBackend {
   ///
   ///
   Future<api.AdminListUsersResponse> listUsers({
-    String email,
-    String oauthUserId,
-    String continuationToken,
+    String? email,
+    String? oauthUserId,
+    String? continuationToken,
     int limit = 1000,
   }) async {
     InvalidInputException.checkRange(limit, 'limit', minimum: 1, maximum: 1000);
@@ -93,9 +100,7 @@ class AdminBackend {
       //       and remove the toDatastoreKey conversion here.
       final key =
           _db.modelDB.toDatastoreKey(_db.emptyKey.append(User, id: lastId));
-      if (lastId != null) {
-        query.filter('__key__ >', key);
-      }
+      query.filter('__key__ >', key);
       query.order('__key__');
     } else {
       query.order('__key__');
@@ -199,7 +204,7 @@ class AdminBackend {
       } else if (p.contactEmail == user.email) {
         final seniorUser =
             await accountBackend.lookupUserById(seniorMember.userId);
-        p.contactEmail = seniorUser.email;
+        p.contactEmail = seniorUser!.email;
       }
       tx.queueMutations(inserts: [p], deletes: [member.key]);
     });
@@ -230,7 +235,7 @@ class AdminBackend {
   /// longest time.
   ///
   /// If there are no more admins left, the "oldest" non-admin member is returned.
-  Future<PublisherMember> _remainingSeniorMember(
+  Future<PublisherMember?> _remainingSeniorMember(
       Key publisherKey, String excludeUserId) async {
     final otherMembers = await _db
         .query<PublisherMember>(ancestorKey: publisherKey)
@@ -285,7 +290,7 @@ class AdminBackend {
     _logger.info('${caller.userId} (${caller.email}) initiated the delete '
         'of package $packageName');
 
-    List<Version> versionsNames;
+    List<Version>? versionsNames;
     await withRetryTransaction(_db, (tx) async {
       final deletes = <Key>[];
       final packageKey = _db.emptyKey.append(Package, id: packageName);
@@ -307,8 +312,8 @@ class AdminBackend {
 
       final moderatedPkgKey =
           _db.emptyKey.append(ModeratedPackage, id: packageName);
-      ModeratedPackage moderatedPkg = await _db
-          .lookupValue<ModeratedPackage>(moderatedPkgKey, orElse: () => null);
+      ModeratedPackage? moderatedPkg =
+          await _db.lookupOrNull<ModeratedPackage>(moderatedPkgKey);
       if (moderatedPkg == null) {
         moderatedPkg = ModeratedPackage()
           ..parentKey = _db.emptyKey
@@ -328,7 +333,7 @@ class AdminBackend {
     final futures = <Future>[];
     final TarballStorage storage = TarballStorage(storageService,
         storageService.bucket(activeConfiguration.packageBucketName), '');
-    versionsNames.forEach((final v) {
+    versionsNames!.forEach((final v) {
       final future = pool.withResource(() async {
         await storage.remove(packageName, v.toString());
       });
@@ -381,7 +386,7 @@ class AdminBackend {
     final currentDartSdk = await getDartSdkVersion();
     await withRetryTransaction(_db, (tx) async {
       final Key packageKey = _db.emptyKey.append(Package, id: packageName);
-      final package = (await tx.lookup([packageKey])).first as Package;
+      final package = await tx.lookupOrNull<Package>(packageKey);
       if (package == null) {
         print('Package $packageName does not exist.');
       }
@@ -416,7 +421,7 @@ class AdminBackend {
         package.latestPreviewPublished = null;
       }
       if (updatePackage) {
-        package.lastVersionPublished = null;
+        package!.lastVersionPublished = null;
         versions.where((v) => v.version != version).forEach((v) => package
             .updateVersion(v, dartSdkVersion: currentDartSdk.semanticVersion));
         package.updated = DateTime.now().toUtc();
@@ -447,7 +452,8 @@ class AdminBackend {
     );
   }
 
-  Future _deleteWithQuery<T>(Query query, {bool Function(T item) where}) async {
+  Future _deleteWithQuery<T>(Query query,
+      {bool Function(T item)? where}) async {
     final deletes = <Key>[];
     await for (Model m in query.run()) {
       final shouldDelete = where == null || where(m as T);

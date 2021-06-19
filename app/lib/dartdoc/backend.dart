@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -11,20 +13,23 @@ import 'package:_discoveryapis_commons/_discoveryapis_commons.dart'
 import 'package:gcloud/service_scope.dart' as ss;
 import 'package:gcloud/storage.dart';
 import 'package:logging/logging.dart';
-import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:pool/pool.dart';
 import 'package:retry/retry.dart';
 
+// ignore: import_of_legacy_library_into_null_safe
 import '../dartdoc/models.dart' show DartdocEntry;
 import '../package/backend.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../package/models.dart' show Package, PackageVersion;
 import '../scorecard/backend.dart';
 import '../shared/datastore.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../shared/redis_cache.dart' show cache;
 import '../shared/storage.dart';
 import '../shared/versions.dart' as shared_versions;
 
+// ignore: import_of_legacy_library_into_null_safe
 import 'models.dart';
 import 'storage_path.dart' as storage_path;
 
@@ -75,7 +80,7 @@ class DartdocBackend {
   /// Updates the [oldEntry] entry with the current isLatest value.
   Future<void> updateOldIsLatest(
     DartdocEntry oldEntry, {
-    @required bool isLatest,
+    required bool isLatest,
   }) async {
     await withRetryTransaction(_db, (tx) async {
       final oldRun = await tx.lookupOrNull<DartdocRun>(
@@ -164,8 +169,7 @@ class DartdocBackend {
       await withRetryTransaction(_db, (tx) async {
         for (final old in oldRuns) {
           if (old.isExpired) continue;
-          final r =
-              await tx.lookupValue<DartdocRun>(old.key, orElse: () => null);
+          final r = await tx.lookupOrNull<DartdocRun>(old.key);
           if (r == null || r.isExpired) continue;
           r.isExpired = true;
           tx.insert(r);
@@ -178,13 +182,14 @@ class DartdocBackend {
   ///
   /// If the entry is missing for the current runtimeVersion, the method will
   /// try to load the relevant entry for earlier runtimeVersions.
-  Future<List<DartdocEntry>> getEntriesForVersions(
+  Future<List<DartdocEntry?>> getEntriesForVersions(
       String package, List<String> versions) async {
     final entries = <String, DartdocEntry>{};
 
     final pool = Pool(8);
     await Future.wait(versions.map((v) => pool.withResource(() async {
-          final cachedEntry = await cache.dartdocEntry(package, v).get();
+          final cachedEntry =
+              await cache.dartdocEntry(package, v).get() as DartdocEntry?;
           if (cachedEntry != null) {
             entries[v] = cachedEntry;
           }
@@ -220,18 +225,19 @@ class DartdocBackend {
   }
 
   /// Return the latest entry that should be used to serve the content.
-  Future<DartdocEntry> getEntry(String package, String version) async {
-    final cachedEntry = await cache.dartdocEntry(package, version).get();
+  Future<DartdocEntry?> getEntry(String package, String version) async {
+    final cachedEntry =
+        await cache.dartdocEntry(package, version).get() as DartdocEntry?;
     if (cachedEntry != null) {
       return cachedEntry;
     }
 
-    Future<DartdocEntry> loadVersion(String v) async {
+    Future<DartdocEntry?> loadVersion(String v) async {
       final entries = await getEntriesForVersions(package, [v]);
       return entries.single;
     }
 
-    DartdocEntry entry;
+    DartdocEntry? entry;
     if (version != 'latest') {
       entry = await loadVersion(version);
     } else {
@@ -260,10 +266,10 @@ class DartdocBackend {
   }
 
   /// Returns the file's header from the storage bucket
-  Future<FileInfo> getFileInfo(DartdocEntry entry, String relativePath) async {
+  Future<FileInfo?> getFileInfo(DartdocEntry entry, String relativePath) async {
     final objectName = entry.objectName(relativePath);
-    return cache.dartdocFileInfo(objectName).get(
-          () async => retry(
+    return await cache.dartdocFileInfo(objectName).get(
+          () async => retry<FileInfo?>(
             () async {
               try {
                 final info = await _storage.info(objectName);
@@ -276,7 +282,7 @@ class DartdocBackend {
             },
             maxAttempts: 2,
           ),
-        );
+        ) as FileInfo?;
   }
 
   /// Returns a file's content from the storage bucket.
@@ -294,7 +300,7 @@ class DartdocBackend {
 
   /// Removes all files related to a package.
   Future<void> removeAll(String package,
-      {String version, int concurrency}) async {
+      {String? version, int? concurrency}) async {
     final prefix = version == null ? '$package/' : '$package/$version/';
     await _deleteAllWithPrefix(prefix, concurrency: concurrency);
   }
@@ -380,7 +386,7 @@ class DartdocBackend {
 
   /// Tries to load the entry from the storage bucket.
   /// Returns null if the entry was missing or unable to parse.
-  Future<DartdocEntry> _tryLoadEntryFromBucket(String objectName) async {
+  Future<DartdocEntry?> _tryLoadEntryFromBucket(String objectName) async {
     try {
       return await DartdocEntry.fromStream(_storage.read(objectName));
     } catch (e, st) {
@@ -395,10 +401,8 @@ class DartdocBackend {
 
   Future<void> _deleteAll(DartdocEntry entry) async {
     await withRetryTransaction(_db, (tx) async {
-      final r = await tx.lookupValue<DartdocRun>(
-        _db.emptyKey.append(DartdocRun, id: entry.uuid),
-        orElse: () => null,
-      );
+      final r = await tx.lookupOrNull<DartdocRun>(
+          _db.emptyKey.append(DartdocRun, id: entry.uuid));
       if (r != null) {
         r.status = DartdocRunStatus.deleting;
         tx.insert(r);
@@ -409,17 +413,15 @@ class DartdocBackend {
     await deleteFromBucket(_storage, entry.entryObjectName);
     await deleteFromBucket(_storage, entry.inProgressObjectName);
     await withRetryTransaction(_db, (tx) async {
-      final r = await tx.lookupValue<DartdocRun>(
-        _db.emptyKey.append(DartdocRun, id: entry.uuid),
-        orElse: () => null,
-      );
+      final r = await tx.lookupOrNull<DartdocRun>(
+          _db.emptyKey.append(DartdocRun, id: entry.uuid));
       if (r != null) {
         tx.delete(r.key);
       }
     });
   }
 
-  Future<void> _deleteAllWithPrefix(String prefix, {int concurrency}) async {
+  Future<void> _deleteAllWithPrefix(String prefix, {int? concurrency}) async {
     final Stopwatch sw = Stopwatch()..start();
     final count = await deleteBucketFolderRecursively(_storage, prefix,
         concurrency: concurrency ?? _concurrentDeletes);

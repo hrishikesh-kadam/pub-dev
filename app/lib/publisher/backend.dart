@@ -461,7 +461,7 @@ class PublisherBackend {
       final auditLogRecord = AuditLogRecord.publisherMemberRemoved(
         publisherId: publisherId,
         activeUser: user,
-        memberToRemove: memberUser,
+        memberToRemove: memberUser!,
       );
       await _db.commit(inserts: [auditLogRecord], deletes: [pm.key]);
     }
@@ -490,7 +490,7 @@ class PublisherBackend {
           ..updated = now
           ..role = PublisherMemberRole.admin,
         AuditLogRecord.publisherMemberInviteAccepted(
-          user: user,
+          user: user!,
           publisherId: publisherId,
         ),
       ]);

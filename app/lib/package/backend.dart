@@ -142,7 +142,7 @@ class PackageBackend {
   }
 
   /// Returns the latest stable version of a package.
-  Future<String> getLatestVersion(String package) async {
+  Future<String?> getLatestVersion(String package) async {
     return cache.packageLatestVersion(package).get(() async {
       final p = await db
           .lookupOrNull<Package>(db.emptyKey.append(Package, id: package));

@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
@@ -20,7 +22,7 @@ class FakeAuthProvider implements AuthProvider {
   Future<void> close() async {}
 
   @override
-  Future<AuthResult> tryAuthenticate(String accessToken) async {
+  Future<AuthResult?> tryAuthenticate(String? accessToken) async {
     if (accessToken == null || !accessToken.contains('-at-')) return null;
     final email = accessToken.replaceAll('-at-', '@').replaceAll('-dot-', '.');
     final id = email.replaceAll('@', '-').replaceAll('.', '-');
@@ -28,7 +30,7 @@ class FakeAuthProvider implements AuthProvider {
   }
 
   @override
-  Future<AccountProfile> getAccountProfile(String accessToken) async {
+  Future<AccountProfile?> getAccountProfile(String? accessToken) async {
     if (accessToken == null || !accessToken.contains('-at-')) return null;
     final email = accessToken.replaceAll('-dot-', '.').replaceAll('-at-', '@');
 

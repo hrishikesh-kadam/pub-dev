@@ -2,12 +2,16 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:async';
 
 import 'package:logging/logging.dart';
 import 'package:pub_dev/package/backend.dart';
 
+// ignore: import_of_legacy_library_into_null_safe
 import '../package/models.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../scorecard/models.dart';
 
 import 'datastore.dart';
@@ -28,7 +32,7 @@ class DatastoreHeadTaskSource implements TaskSource {
   final Duration _window;
   final Duration _sleep;
   final TaskSourceModel _model;
-  DateTime _lastTs;
+  DateTime? _lastTs;
 
   DatastoreHeadTaskSource(
     this._db,
@@ -38,10 +42,10 @@ class DatastoreHeadTaskSource implements TaskSource {
     bool skipHistory = false,
 
     /// Tolerance window for eventually consistency in Datastore.
-    Duration window,
+    Duration? window,
 
     /// Inactivity duration between two polls.
-    Duration sleep,
+    Duration? sleep,
   })  : _window = window ?? _defaultWindow,
         _sleep = sleep ?? _defaultSleep,
         _lastTs = skipHistory
@@ -73,7 +77,7 @@ class DatastoreHeadTaskSource implements TaskSource {
   }
 
   Stream<Task> _poll<M extends Model>(
-      String field, FutureOr<Task> Function(M model) modelToTask) async* {
+      String field, FutureOr<Task?> Function(M model) modelToTask) async* {
     final Query q = _db.query<M>();
     if (_lastTs != null) {
       q.filter('$field >=', _lastTs);
@@ -94,7 +98,7 @@ class DatastoreHeadTaskSource implements TaskSource {
   Task _versionToTask(PackageVersion pv) =>
       Task(pv.package, pv.version, pv.created);
 
-  Task _scoreCardToTask(ScoreCard s) {
+  Task? _scoreCardToTask(ScoreCard s) {
     if (s.runtimeVersion == runtimeVersion) {
       return Task(s.packageName, s.packageVersion, s.updated);
     } else {

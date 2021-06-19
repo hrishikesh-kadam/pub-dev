@@ -27,10 +27,10 @@ abstract class AuthProvider {
   ///
   /// Returns null on any error, or if the token is expired, or the user is not
   /// verified.
-  Future<AuthResult?> tryAuthenticate(String token);
+  Future<AuthResult?> tryAuthenticate(String? token);
 
   /// Returns the profile information of a given access token.
-  Future<AccountProfile> getAccountProfile(String accessToken);
+  Future<AccountProfile?> getAccountProfile(String? accessToken);
 
   /// Close resources.
   Future<void> close();

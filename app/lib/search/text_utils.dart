@@ -39,7 +39,7 @@ String _compactText(String? text, {int maxLength = -1}) {
   return t;
 }
 
-String compactDescription(String text) => _compactText(text, maxLength: 500);
+String compactDescription(String? text) => _compactText(text, maxLength: 500);
 
 String compactReadme(String? text) {
   if (text == null || text.isEmpty) return '';

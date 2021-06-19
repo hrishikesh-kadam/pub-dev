@@ -376,11 +376,3 @@ Report joinReport({PanaReport panaReport, DartdocReport dartdocReport}) {
   }
   return report;
 }
-
-extension ReportExt on Report {
-  int get grantedPoints =>
-      sections.fold<int>(0, (sum, section) => sum + section.grantedPoints);
-
-  int get maxPoints =>
-      sections.fold<int>(0, (sum, section) => sum + section.maxPoints);
-}

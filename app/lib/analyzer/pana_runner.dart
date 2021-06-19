@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:async';
 import 'dart:io';
 
@@ -12,10 +14,13 @@ import 'package:path/path.dart' as p;
 
 import '../frontend/static_files.dart' as static_files;
 import '../job/job.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../package/models.dart';
 import '../package/overrides.dart';
 import '../scorecard/backend.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../scorecard/models.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../shared/configuration.dart';
 import '../shared/tool_env.dart';
 
@@ -29,10 +34,10 @@ final pedanticAnalysisOptionsYaml = File(p.join(static_files.resolveAppDir(),
 /// Generic interface to run pana for package-analysis.
 // ignore: one_member_abstracts
 abstract class PanaRunner {
-  Future<Summary> analyze({
-    @required String package,
-    @required String version,
-    @required PackageStatus packageStatus,
+  Future<Summary?> analyze({
+    required String package,
+    required String version,
+    required PackageStatus packageStatus,
   });
 }
 
@@ -40,10 +45,10 @@ class _PanaRunner implements PanaRunner {
   final _urlChecker = UrlChecker();
 
   @override
-  Future<Summary> analyze({
-    @required String package,
-    @required String version,
-    @required PackageStatus packageStatus,
+  Future<Summary?> analyze({
+    required String package,
+    required String version,
+    required PackageStatus packageStatus,
   }) async {
     return await withToolEnv(
       usesPreviewSdk: packageStatus.usesPreviewSdk,
@@ -79,8 +84,8 @@ class AnalyzerJobProcessor extends JobProcessor {
   final PanaRunner _runner;
 
   AnalyzerJobProcessor({
-    PanaRunner runner,
-    @required AliveCallback aliveCallback,
+    PanaRunner? runner,
+    required AliveCallback? aliveCallback,
   })  : _runner = runner ?? _PanaRunner(),
         super(
           service: JobService.analyzer,
@@ -99,7 +104,7 @@ class AnalyzerJobProcessor extends JobProcessor {
   @override
   Future<JobStatus> process(Job job) async {
     final packageStatus = await scoreCardBackend.getPackageStatus(
-        job.packageName, job.packageVersion);
+        job.packageName!, job.packageVersion!);
     // In case the package was deleted between scheduling and the actual delete.
     if (!packageStatus.exists) {
       _logger.info('Package does not exist: $job.');
@@ -126,12 +131,12 @@ class AnalyzerJobProcessor extends JobProcessor {
       return JobStatus.skipped;
     }
 
-    Future<Summary> analyze() => _runner.analyze(
-          package: job.packageName,
-          version: job.packageVersion,
+    Future<Summary?> analyze() => _runner.analyze(
+          package: job.packageName!,
+          version: job.packageVersion!,
           packageStatus: packageStatus,
         );
-    Summary summary = await analyze();
+    Summary? summary = await analyze();
     if (summary?.report == null) {
       _logger.info('Retrying $job...');
       await Future.delayed(Duration(seconds: 15));
@@ -154,17 +159,17 @@ class AnalyzerJobProcessor extends JobProcessor {
     return status;
   }
 
-  Future<void> _storeScoreCard(Job job, Summary summary,
-      {List<String> flags}) async {
+  Future<void> _storeScoreCard(Job job, Summary? summary,
+      {List<String>? flags}) async {
     await scoreCardBackend.updateReportOnCard(
-      job.packageName,
-      job.packageVersion,
+      job.packageName!,
+      job.packageVersion!,
       panaReport: panaReportFromSummary(summary, flags: flags),
     );
   }
 }
 
-PanaReport panaReportFromSummary(Summary summary, {List<String> flags}) {
+PanaReport panaReportFromSummary(Summary? summary, {List<String>? flags}) {
   final reportStatus =
       summary == null ? ReportStatus.aborted : ReportStatus.success;
   return PanaReport(

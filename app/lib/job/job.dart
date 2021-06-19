@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -10,8 +12,10 @@ import 'package:meta/meta.dart';
 import 'package:pool/pool.dart';
 
 import '../package/backend.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../package/models.dart' show Package, PackageVersion;
 import '../shared/datastore.dart' as db;
+// ignore: import_of_legacy_library_into_null_safe
 import '../shared/redis_cache.dart';
 import '../shared/task_scheduler.dart';
 import '../shared/task_sources.dart';
@@ -30,15 +34,15 @@ typedef AliveCallback = FutureOr Function();
 abstract class JobProcessor {
   final JobService service;
   final String _serviceAsString;
-  final AliveCallback _aliveCallback;
+  final AliveCallback? _aliveCallback;
   final _trackers = <String, DurationTracker>{};
 
   JobProcessor({
-    @required this.service,
+    required this.service,
 
     /// [JobProcessor] calls this to indicate that it is still alive and working.
     /// It is expected to be called between jobs.
-    AliveCallback aliveCallback,
+    AliveCallback? aliveCallback,
   })  : _serviceAsString = jobServiceAsString(service),
         _aliveCallback = aliveCallback;
 
@@ -51,7 +55,7 @@ abstract class JobProcessor {
     int sleepSeconds = 0;
     for (;;) {
       final status = await _runOneJob();
-      if (_aliveCallback != null) await _aliveCallback();
+      if (_aliveCallback != null) await _aliveCallback!();
       final wasProcessing =
           status == JobStatus.success || status == JobStatus.skipped;
       sleepSeconds = wasProcessing ? 0 : math.min(sleepSeconds + 1, 60);
@@ -202,7 +206,7 @@ class JobMaintenance {
       final pool = Pool(4);
       final futures = <Future>[];
       for (final package in packageNames) {
-        final p = packages[package];
+        final p = packages[package]!;
         final pv = await _db.lookupValue<PackageVersion>(p.latestVersionKey);
         final f = pool.withResource(() => updateJob(pv, false));
         futures.add(f);
