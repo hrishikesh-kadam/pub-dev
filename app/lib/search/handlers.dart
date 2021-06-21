@@ -2,12 +2,15 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:async';
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:logging/logging.dart';
 import 'package:pub_dev/search/dart_sdk_mem_index.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import 'package:shelf/shelf.dart' as shelf;
 
 import '../shared/env_config.dart';
@@ -16,6 +19,7 @@ import '../shared/handlers.dart';
 import 'backend.dart';
 import 'flutter_sdk_mem_index.dart';
 import 'result_combiner.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import 'search_service.dart';
 
 final Logger _logger = Logger('pub.search.handlers');

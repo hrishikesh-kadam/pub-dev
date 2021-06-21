@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:async';
 
 import 'package:args/command_runner.dart';
@@ -14,6 +16,7 @@ import 'package:stream_transform/stream_transform.dart' show RateLimit;
 import 'package:watcher/watcher.dart';
 
 import '../../analyzer/analyzer_client.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../../frontend/handlers.dart';
 import '../../frontend/static_files.dart';
 import '../../frontend/templates/_cache.dart';

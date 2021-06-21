@@ -1260,7 +1260,7 @@ class TarballStorage {
   final Storage storage;
   final Bucket bucket;
 
-  TarballStorage(this.storage, Bucket bucket, String namespace)
+  TarballStorage(this.storage, Bucket bucket, String? namespace)
       : bucket = bucket,
         namer = TarballStorageNamer(
             activeConfiguration.storageBaseUrl, bucket.bucketName, namespace);

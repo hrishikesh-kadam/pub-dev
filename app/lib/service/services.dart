@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:async' show FutureOr, Zone;
 
 import 'package:appengine/appengine.dart';
@@ -10,7 +12,6 @@ import 'package:fake_gcloud/mem_storage.dart';
 import 'package:gcloud/service_scope.dart';
 import 'package:gcloud/storage.dart';
 import 'package:googleapis_auth/auth_io.dart' as auth;
-import 'package:meta/meta.dart';
 import 'package:pub_dev/fake/server/fake_storage_server.dart';
 import 'package:pub_dev/service/youtube/backend.dart';
 
@@ -41,10 +42,12 @@ import '../search/flutter_sdk_mem_index.dart';
 import '../search/mem_index.dart';
 import '../search/search_client.dart';
 import '../search/updater.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../shared/configuration.dart';
 import '../shared/datastore.dart';
 import '../shared/env_config.dart';
 import '../shared/popularity_storage.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import '../shared/redis_cache.dart' show setupCache;
 import '../shared/storage.dart';
 import '../tool/utils/http.dart';
@@ -103,10 +106,10 @@ Future<void> withServices(FutureOr<void> Function() fn) async {
 
 /// Run [fn] with services.
 Future<void> withFakeServices({
-  @required FutureOr<void> Function() fn,
-  Configuration configuration,
-  MemDatastore datastore,
-  MemStorage storage,
+  required FutureOr<void> Function() fn,
+  Configuration? configuration,
+  MemDatastore? datastore,
+  MemStorage? storage,
 }) async {
   if (Zone.current[_pubDevServicesInitializedKey] == true) {
     return await fork(() async => await fn());
@@ -117,8 +120,8 @@ Future<void> withFakeServices({
   datastore ??= MemDatastore();
   storage ??= MemStorage();
   return await fork(() async {
-    registerDbService(DatastoreDB(datastore));
-    registerStorageService(storage);
+    registerDbService(DatastoreDB(datastore!));
+    registerStorageService(storage!);
     if (configuration == null) {
       // start storage server
       final storageServer = FakeStorageServer(storage);
@@ -135,7 +138,7 @@ Future<void> withFakeServices({
     registerAuthProvider(FakeAuthProvider());
     registerDomainVerifier(FakeDomainVerifier());
     registerEmailSender(FakeEmailSender());
-    registerUploadSigner(FakeUploadSignerService(configuration.storageBaseUrl));
+    registerUploadSigner(FakeUploadSignerService(configuration!.storageBaseUrl));
     return await _withPubServices(() async {
       await youtubeBackend.start();
       return await fn();

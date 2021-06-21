@@ -2,6 +2,8 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
+// @dart=2.12
+
 import 'dart:async';
 import 'dart:math';
 
@@ -9,6 +11,7 @@ import 'package:gcloud/service_scope.dart' as ss;
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
 
+// ignore: import_of_legacy_library_into_null_safe
 import '../package/models.dart' show Package;
 import '../shared/datastore.dart';
 import '../shared/exceptions.dart';
@@ -17,6 +20,7 @@ import '../shared/task_scheduler.dart';
 import '../shared/task_sources.dart';
 
 import 'backend.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import 'search_service.dart';
 
 final Logger _logger = Logger('pub.search.updater');
@@ -31,7 +35,7 @@ IndexUpdater get indexUpdater => ss.lookup(#_indexUpdater) as IndexUpdater;
 class IndexUpdater implements TaskRunner {
   final DatastoreDB _db;
   final PackageIndex _packageIndex;
-  Timer _statsTimer;
+  Timer? _statsTimer;
 
   IndexUpdater(this._db, this._packageIndex);
 
@@ -93,8 +97,7 @@ class IndexUpdater implements TaskRunner {
   }
 
   /// Starts the scheduler to update the package index.
-  void runScheduler({Stream<Task> manualTriggerTasks}) {
-    manualTriggerTasks ??= Stream<Task>.empty();
+  void runScheduler({required Stream<Task> manualTriggerTasks}) {
     final scheduler = TaskScheduler(
       this,
       [
